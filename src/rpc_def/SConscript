@@ -1,0 +1,4 @@
+Import('env')
+import os
+
+# print("Current working dir: %s" % os.path.abspath('.'))

@@ -1,0 +1,22 @@
+package PocoRpc;
+option cc_generic_services = true;
+
+message PingReq {
+}
+
+message PingReply {
+    required uint32 status = 1;
+}
+
+message GetServiceListReq {
+}
+
+message GetServiceListReply {
+    required uint32 status = 1;
+    repeated string service_list = 2;   // names of services
+}
+
+service BaseService {
+    rpc Ping(PingReq) returns(PingReply);
+    rpc GetServiceList(GetServiceListReq) returns(GetServiceListReply);
+}

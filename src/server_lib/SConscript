@@ -1,0 +1,23 @@
+#!/usr/bin/env python
+# encoding: utf-8
+
+Import('env')
+import os
+from glob import glob
+
+# print("Current working dir: %s" % os.path.abspath('.'))
+
+# source_files = glob('../base/*.cc') + glob('./*.cc') + glob('../rpc_proto/*.cc') + glob('../rpc_def/*.cc')
+
+# print("==> 源文件列表")
+# for s in source_files:
+#     print('\t%s' % os.path.realpath(s))
+
+# print("==> 编译参数")
+# print("\t CPPPATH = %s" % ' '.join(env['CPPPATH']))
+# print("\t CPPDEFINES = %s" % ' '.join(env['CPPDEFINES']))
+# print("\t CPPFLAGS = %s" % ' '.join(env['CPPFLAGS']))
+# print("\t LIBPATH = %s" % ' '.join(env['LIBPATH']))
+# print("\t LIBS = %s" % ' '.join(env['LIBS']))
+# print("\t STATICLIBS = %s" % ' '.join(env['STATICLIBS']))
+# print("\t LINKFLAGS = %s" % ' '.join(env['LINKFLAGS']))

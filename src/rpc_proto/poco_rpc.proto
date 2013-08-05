@@ -1,0 +1,13 @@
+package PocoRpc;
+
+// 既做Request Message, 又做Response Message
+message RpcMessage {
+    required uint64 id = 1;
+    required string method = 2;
+    required string guid = 3;       // rpc server 每次启动都会生成一个不同的guid. 
+                                    // 为什么这么做呢? 假设RpcServer 有容错机制, 例如双机热备. 
+                                    // 客户端可以主动调用此接口查询, 判断现在访问的RpcServer 实例
+                                    // 是否和之前的相同.
+    required string msg_body = 4;
+}
+
