@@ -1,3 +1,5 @@
 .DS_Store
 nbproject
 *.o
+.sconsign.dblite
+build/*
