@@ -10,7 +10,7 @@
 
 #include "base.h"
 
-namespace jstor {
+namespace com {
 
 class Result {
 public:

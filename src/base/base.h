@@ -91,7 +91,7 @@ T Max(T x, T y) {
 do {                                                \
   if (arg.empty()) {                                \
     std::string arg_name(#arg);                     \
-    jstor::Result::set_result(result.get(),         \
+      com::Result::set_result(result.get(),         \
             E_INVALID, "Missing --" + arg_name);    \
     std::cout << result->DebugString();             \
     return E_INVALID;                               \

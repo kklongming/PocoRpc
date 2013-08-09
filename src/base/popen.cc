@@ -11,7 +11,7 @@
 #include <Poco/PipeStream.h>
 
 
-namespace jstor {
+namespace com {
 
 Popen::Popen(const std::string& cmd, bool using_shell) : cmd_(cmd),
 using_shell_(using_shell), shell_("/bin/bash") {
@@ -62,7 +62,7 @@ void Popen::set_shell(const std::string& shell_path) {
 bool Popen::exec_cmd(const std::string& cmd, const StringList* args, Result* result) {
   scoped_ptr< Poco::Pipe > out_pipe(new Poco::Pipe());
   Poco::ProcessHandle ph = Poco::Process::launch(cmd, *args, NULL, out_pipe.get(), out_pipe.get());
-  int ret = ph.wait();
+  
   scoped_ptr< Poco::PipeInputStream > pis(new Poco::PipeInputStream(*out_pipe));
 
   while (!pis->eof()) {
@@ -75,6 +75,7 @@ bool Popen::exec_cmd(const std::string& cmd, const StringList* args, Result* res
       output_lines_->pop_back();
     }
   }
+  int ret = ph.wait();
   if (ret != 0) {
     std::string err_msg = pystring::join("\n", *output_lines_);
     Result::set_result(result, ret, err_msg);

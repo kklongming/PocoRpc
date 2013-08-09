@@ -14,7 +14,7 @@
 #include "pystring.h"
 #include "result.h"
 
-namespace jstor {
+namespace com {
 
 typedef std::vector< std::string > StringList;
 

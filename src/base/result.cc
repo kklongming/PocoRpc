@@ -7,7 +7,7 @@
 
 #include "result.h"
 
-namespace jstor {
+namespace com {
 
 Result::Result() : error_code_(0), error_msg_("OK") {
 }

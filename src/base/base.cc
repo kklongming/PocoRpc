@@ -113,10 +113,10 @@ bool WriteToFile(const std::string& file_path, const std::string& value) {
 
 std::string CatFile(const std::string& file_path, bool strip) {
   std::string cmd = Poco::format("cat %s", file_path);
-  scoped_ptr<jstor::Popen> p(new jstor::Popen(cmd));
+  scoped_ptr<com::Popen> p(new com::Popen(cmd));
   p->run();
   std::stringstream ss;
-  jstor::StringList::iterator it = p->output_lines()->begin();
+  com::StringList::iterator it = p->output_lines()->begin();
   for (; it != p->output_lines()->end(); ++it) {
     ss << *it;
   }
