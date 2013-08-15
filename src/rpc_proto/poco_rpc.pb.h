@@ -98,62 +98,47 @@ class RpcMessage : public ::google::protobuf::Message {
   inline ::google::protobuf::uint64 id() const;
   inline void set_id(::google::protobuf::uint64 value);
 
-  // required string method = 2;
-  inline bool has_method() const;
-  inline void clear_method();
-  static const int kMethodFieldNumber = 2;
-  inline const ::std::string& method() const;
-  inline void set_method(const ::std::string& value);
-  inline void set_method(const char* value);
-  inline void set_method(const char* value, size_t size);
-  inline ::std::string* mutable_method();
-  inline ::std::string* release_method();
-  inline void set_allocated_method(::std::string* method);
+  // required string method_full_name = 2;
+  inline bool has_method_full_name() const;
+  inline void clear_method_full_name();
+  static const int kMethodFullNameFieldNumber = 2;
+  inline const ::std::string& method_full_name() const;
+  inline void set_method_full_name(const ::std::string& value);
+  inline void set_method_full_name(const char* value);
+  inline void set_method_full_name(const char* value, size_t size);
+  inline ::std::string* mutable_method_full_name();
+  inline ::std::string* release_method_full_name();
+  inline void set_allocated_method_full_name(::std::string* method_full_name);
 
-  // required string guid = 3;
-  inline bool has_guid() const;
-  inline void clear_guid();
-  static const int kGuidFieldNumber = 3;
-  inline const ::std::string& guid() const;
-  inline void set_guid(const ::std::string& value);
-  inline void set_guid(const char* value);
-  inline void set_guid(const char* value, size_t size);
-  inline ::std::string* mutable_guid();
-  inline ::std::string* release_guid();
-  inline void set_allocated_guid(::std::string* guid);
-
-  // required string msg_body = 4;
-  inline bool has_msg_body() const;
-  inline void clear_msg_body();
-  static const int kMsgBodyFieldNumber = 4;
-  inline const ::std::string& msg_body() const;
-  inline void set_msg_body(const ::std::string& value);
-  inline void set_msg_body(const char* value);
-  inline void set_msg_body(const char* value, size_t size);
-  inline ::std::string* mutable_msg_body();
-  inline ::std::string* release_msg_body();
-  inline void set_allocated_msg_body(::std::string* msg_body);
+  // required string message_body = 3;
+  inline bool has_message_body() const;
+  inline void clear_message_body();
+  static const int kMessageBodyFieldNumber = 3;
+  inline const ::std::string& message_body() const;
+  inline void set_message_body(const ::std::string& value);
+  inline void set_message_body(const char* value);
+  inline void set_message_body(const char* value, size_t size);
+  inline ::std::string* mutable_message_body();
+  inline ::std::string* release_message_body();
+  inline void set_allocated_message_body(::std::string* message_body);
 
   // @@protoc_insertion_point(class_scope:PocoRpc.RpcMessage)
  private:
   inline void set_has_id();
   inline void clear_has_id();
-  inline void set_has_method();
-  inline void clear_has_method();
-  inline void set_has_guid();
-  inline void clear_has_guid();
-  inline void set_has_msg_body();
-  inline void clear_has_msg_body();
+  inline void set_has_method_full_name();
+  inline void clear_has_method_full_name();
+  inline void set_has_message_body();
+  inline void clear_has_message_body();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::google::protobuf::uint64 id_;
-  ::std::string* method_;
-  ::std::string* guid_;
-  ::std::string* msg_body_;
+  ::std::string* method_full_name_;
+  ::std::string* message_body_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
 
   friend void  protobuf_AddDesc_poco_5frpc_2eproto();
   friend void protobuf_AssignDesc_poco_5frpc_2eproto();
@@ -191,213 +176,143 @@ inline void RpcMessage::set_id(::google::protobuf::uint64 value) {
   id_ = value;
 }
 
-// required string method = 2;
-inline bool RpcMessage::has_method() const {
+// required string method_full_name = 2;
+inline bool RpcMessage::has_method_full_name() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
-inline void RpcMessage::set_has_method() {
+inline void RpcMessage::set_has_method_full_name() {
   _has_bits_[0] |= 0x00000002u;
 }
-inline void RpcMessage::clear_has_method() {
+inline void RpcMessage::clear_has_method_full_name() {
   _has_bits_[0] &= ~0x00000002u;
 }
-inline void RpcMessage::clear_method() {
-  if (method_ != &::google::protobuf::internal::kEmptyString) {
-    method_->clear();
+inline void RpcMessage::clear_method_full_name() {
+  if (method_full_name_ != &::google::protobuf::internal::kEmptyString) {
+    method_full_name_->clear();
   }
-  clear_has_method();
+  clear_has_method_full_name();
 }
-inline const ::std::string& RpcMessage::method() const {
-  return *method_;
+inline const ::std::string& RpcMessage::method_full_name() const {
+  return *method_full_name_;
 }
-inline void RpcMessage::set_method(const ::std::string& value) {
-  set_has_method();
-  if (method_ == &::google::protobuf::internal::kEmptyString) {
-    method_ = new ::std::string;
+inline void RpcMessage::set_method_full_name(const ::std::string& value) {
+  set_has_method_full_name();
+  if (method_full_name_ == &::google::protobuf::internal::kEmptyString) {
+    method_full_name_ = new ::std::string;
   }
-  method_->assign(value);
+  method_full_name_->assign(value);
 }
-inline void RpcMessage::set_method(const char* value) {
-  set_has_method();
-  if (method_ == &::google::protobuf::internal::kEmptyString) {
-    method_ = new ::std::string;
+inline void RpcMessage::set_method_full_name(const char* value) {
+  set_has_method_full_name();
+  if (method_full_name_ == &::google::protobuf::internal::kEmptyString) {
+    method_full_name_ = new ::std::string;
   }
-  method_->assign(value);
+  method_full_name_->assign(value);
 }
-inline void RpcMessage::set_method(const char* value, size_t size) {
-  set_has_method();
-  if (method_ == &::google::protobuf::internal::kEmptyString) {
-    method_ = new ::std::string;
+inline void RpcMessage::set_method_full_name(const char* value, size_t size) {
+  set_has_method_full_name();
+  if (method_full_name_ == &::google::protobuf::internal::kEmptyString) {
+    method_full_name_ = new ::std::string;
   }
-  method_->assign(reinterpret_cast<const char*>(value), size);
+  method_full_name_->assign(reinterpret_cast<const char*>(value), size);
 }
-inline ::std::string* RpcMessage::mutable_method() {
-  set_has_method();
-  if (method_ == &::google::protobuf::internal::kEmptyString) {
-    method_ = new ::std::string;
+inline ::std::string* RpcMessage::mutable_method_full_name() {
+  set_has_method_full_name();
+  if (method_full_name_ == &::google::protobuf::internal::kEmptyString) {
+    method_full_name_ = new ::std::string;
   }
-  return method_;
+  return method_full_name_;
 }
-inline ::std::string* RpcMessage::release_method() {
-  clear_has_method();
-  if (method_ == &::google::protobuf::internal::kEmptyString) {
+inline ::std::string* RpcMessage::release_method_full_name() {
+  clear_has_method_full_name();
+  if (method_full_name_ == &::google::protobuf::internal::kEmptyString) {
     return NULL;
   } else {
-    ::std::string* temp = method_;
-    method_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    ::std::string* temp = method_full_name_;
+    method_full_name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
     return temp;
   }
 }
-inline void RpcMessage::set_allocated_method(::std::string* method) {
-  if (method_ != &::google::protobuf::internal::kEmptyString) {
-    delete method_;
+inline void RpcMessage::set_allocated_method_full_name(::std::string* method_full_name) {
+  if (method_full_name_ != &::google::protobuf::internal::kEmptyString) {
+    delete method_full_name_;
   }
-  if (method) {
-    set_has_method();
-    method_ = method;
+  if (method_full_name) {
+    set_has_method_full_name();
+    method_full_name_ = method_full_name;
   } else {
-    clear_has_method();
-    method_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    clear_has_method_full_name();
+    method_full_name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   }
 }
 
-// required string guid = 3;
-inline bool RpcMessage::has_guid() const {
+// required string message_body = 3;
+inline bool RpcMessage::has_message_body() const {
   return (_has_bits_[0] & 0x00000004u) != 0;
 }
-inline void RpcMessage::set_has_guid() {
+inline void RpcMessage::set_has_message_body() {
   _has_bits_[0] |= 0x00000004u;
 }
-inline void RpcMessage::clear_has_guid() {
+inline void RpcMessage::clear_has_message_body() {
   _has_bits_[0] &= ~0x00000004u;
 }
-inline void RpcMessage::clear_guid() {
-  if (guid_ != &::google::protobuf::internal::kEmptyString) {
-    guid_->clear();
+inline void RpcMessage::clear_message_body() {
+  if (message_body_ != &::google::protobuf::internal::kEmptyString) {
+    message_body_->clear();
   }
-  clear_has_guid();
+  clear_has_message_body();
 }
-inline const ::std::string& RpcMessage::guid() const {
-  return *guid_;
+inline const ::std::string& RpcMessage::message_body() const {
+  return *message_body_;
 }
-inline void RpcMessage::set_guid(const ::std::string& value) {
-  set_has_guid();
-  if (guid_ == &::google::protobuf::internal::kEmptyString) {
-    guid_ = new ::std::string;
+inline void RpcMessage::set_message_body(const ::std::string& value) {
+  set_has_message_body();
+  if (message_body_ == &::google::protobuf::internal::kEmptyString) {
+    message_body_ = new ::std::string;
   }
-  guid_->assign(value);
+  message_body_->assign(value);
 }
-inline void RpcMessage::set_guid(const char* value) {
-  set_has_guid();
-  if (guid_ == &::google::protobuf::internal::kEmptyString) {
-    guid_ = new ::std::string;
+inline void RpcMessage::set_message_body(const char* value) {
+  set_has_message_body();
+  if (message_body_ == &::google::protobuf::internal::kEmptyString) {
+    message_body_ = new ::std::string;
   }
-  guid_->assign(value);
+  message_body_->assign(value);
 }
-inline void RpcMessage::set_guid(const char* value, size_t size) {
-  set_has_guid();
-  if (guid_ == &::google::protobuf::internal::kEmptyString) {
-    guid_ = new ::std::string;
+inline void RpcMessage::set_message_body(const char* value, size_t size) {
+  set_has_message_body();
+  if (message_body_ == &::google::protobuf::internal::kEmptyString) {
+    message_body_ = new ::std::string;
   }
-  guid_->assign(reinterpret_cast<const char*>(value), size);
+  message_body_->assign(reinterpret_cast<const char*>(value), size);
 }
-inline ::std::string* RpcMessage::mutable_guid() {
-  set_has_guid();
-  if (guid_ == &::google::protobuf::internal::kEmptyString) {
-    guid_ = new ::std::string;
+inline ::std::string* RpcMessage::mutable_message_body() {
+  set_has_message_body();
+  if (message_body_ == &::google::protobuf::internal::kEmptyString) {
+    message_body_ = new ::std::string;
   }
-  return guid_;
+  return message_body_;
 }
-inline ::std::string* RpcMessage::release_guid() {
-  clear_has_guid();
-  if (guid_ == &::google::protobuf::internal::kEmptyString) {
+inline ::std::string* RpcMessage::release_message_body() {
+  clear_has_message_body();
+  if (message_body_ == &::google::protobuf::internal::kEmptyString) {
     return NULL;
   } else {
-    ::std::string* temp = guid_;
-    guid_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    ::std::string* temp = message_body_;
+    message_body_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
     return temp;
   }
 }
-inline void RpcMessage::set_allocated_guid(::std::string* guid) {
-  if (guid_ != &::google::protobuf::internal::kEmptyString) {
-    delete guid_;
+inline void RpcMessage::set_allocated_message_body(::std::string* message_body) {
+  if (message_body_ != &::google::protobuf::internal::kEmptyString) {
+    delete message_body_;
   }
-  if (guid) {
-    set_has_guid();
-    guid_ = guid;
+  if (message_body) {
+    set_has_message_body();
+    message_body_ = message_body;
   } else {
-    clear_has_guid();
-    guid_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-  }
-}
-
-// required string msg_body = 4;
-inline bool RpcMessage::has_msg_body() const {
-  return (_has_bits_[0] & 0x00000008u) != 0;
-}
-inline void RpcMessage::set_has_msg_body() {
-  _has_bits_[0] |= 0x00000008u;
-}
-inline void RpcMessage::clear_has_msg_body() {
-  _has_bits_[0] &= ~0x00000008u;
-}
-inline void RpcMessage::clear_msg_body() {
-  if (msg_body_ != &::google::protobuf::internal::kEmptyString) {
-    msg_body_->clear();
-  }
-  clear_has_msg_body();
-}
-inline const ::std::string& RpcMessage::msg_body() const {
-  return *msg_body_;
-}
-inline void RpcMessage::set_msg_body(const ::std::string& value) {
-  set_has_msg_body();
-  if (msg_body_ == &::google::protobuf::internal::kEmptyString) {
-    msg_body_ = new ::std::string;
-  }
-  msg_body_->assign(value);
-}
-inline void RpcMessage::set_msg_body(const char* value) {
-  set_has_msg_body();
-  if (msg_body_ == &::google::protobuf::internal::kEmptyString) {
-    msg_body_ = new ::std::string;
-  }
-  msg_body_->assign(value);
-}
-inline void RpcMessage::set_msg_body(const char* value, size_t size) {
-  set_has_msg_body();
-  if (msg_body_ == &::google::protobuf::internal::kEmptyString) {
-    msg_body_ = new ::std::string;
-  }
-  msg_body_->assign(reinterpret_cast<const char*>(value), size);
-}
-inline ::std::string* RpcMessage::mutable_msg_body() {
-  set_has_msg_body();
-  if (msg_body_ == &::google::protobuf::internal::kEmptyString) {
-    msg_body_ = new ::std::string;
-  }
-  return msg_body_;
-}
-inline ::std::string* RpcMessage::release_msg_body() {
-  clear_has_msg_body();
-  if (msg_body_ == &::google::protobuf::internal::kEmptyString) {
-    return NULL;
-  } else {
-    ::std::string* temp = msg_body_;
-    msg_body_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-    return temp;
-  }
-}
-inline void RpcMessage::set_allocated_msg_body(::std::string* msg_body) {
-  if (msg_body_ != &::google::protobuf::internal::kEmptyString) {
-    delete msg_body_;
-  }
-  if (msg_body) {
-    set_has_msg_body();
-    msg_body_ = msg_body;
-  } else {
-    clear_has_msg_body();
-    msg_body_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    clear_has_message_body();
+    message_body_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   }
 }
 

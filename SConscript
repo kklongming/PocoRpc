@@ -29,9 +29,9 @@ Export('env')
 
 SConscript(['src/rpc_proto/SConscript',
             'src/rpc_def/SConscript', 
-            'src/server_lib/SConscript',
-            'src/client_lib/SConscript', 
+            'src/rpclib/SConscript',
             'src/server/SConscript',
             'src/client/SConscript', 
+            'src/temptest/SConscript'
             ])
 
