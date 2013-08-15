@@ -5,11 +5,11 @@
  * Created on 2013年8月15日, 下午3:07
  */
 
-#include "TaskQueue.h"
+#include "task_queue.h"
 #include <Poco/ScopedLock.h>
 
 TaskQueue::TaskQueue() : can_add_task_(false), exit_(true) {
-  pending_tasks_.reset(new SafeQueue<Poco::Runnable*>());
+  pending_tasks_.reset(new FifoQueue<Poco::Runnable*>());
   mutex_.reset(new Poco::FastMutex());
   worker_.reset(new Poco::Thread());
   ra_.reset(Poco::NewPermanentCallback(this, &TaskQueue::RunTask));

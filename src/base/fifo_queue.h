@@ -15,12 +15,12 @@
 
 
 template<typename T>
-class SafeQueue {
+class FifoQueue {
  public:
   typedef typename std::deque<T>::iterator iterator;
   
-  SafeQueue();
-  virtual ~SafeQueue();
+  FifoQueue();
+  virtual ~FifoQueue();
   
   void push(const T& value);
   T popup();
@@ -50,22 +50,22 @@ class SafeQueue {
   
   scoped_ptr<typename std::deque<T> > queue_;
 
-  DISALLOW_COPY_AND_ASSIGN(SafeQueue);
+  DISALLOW_COPY_AND_ASSIGN(FifoQueue);
 };
 
 template<typename T>
-SafeQueue<T>::SafeQueue() {
+FifoQueue<T>::FifoQueue() {
   mutex_.reset(new Poco::FastMutex());
   condt_for_ready_.reset(new Poco::Condition());
   queue_.reset(new std::deque<T>());
 }
 template<typename T>
-SafeQueue<T>::~SafeQueue() {
+FifoQueue<T>::~FifoQueue() {
   queue_->clear();
 }
 
 template<typename T>
-void SafeQueue<T>::push(const T& value) {
+void FifoQueue<T>::push(const T& value) {
   Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*mutex_);
   bool need_sign_for_ready = queue_->empty();
   queue_->push_front(value);
@@ -75,7 +75,7 @@ void SafeQueue<T>::push(const T& value) {
 }
 
 template<typename T>
-T SafeQueue<T>::popup() {
+T FifoQueue<T>::popup() {
   Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*mutex_);
   bool need_wait_for_ready = queue_->empty();
   if (need_wait_for_ready) {
@@ -87,7 +87,7 @@ T SafeQueue<T>::popup() {
 }
 
 template<typename T>
-bool SafeQueue<T>::tryPopup(T* pv, long milliseconds) {
+bool FifoQueue<T>::tryPopup(T* pv, long milliseconds) {
   Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*mutex_);
   bool need_wait_for_ready = queue_->empty();
   if (need_wait_for_ready) {
@@ -103,44 +103,44 @@ bool SafeQueue<T>::tryPopup(T* pv, long milliseconds) {
 }
 
 template<typename T>
-void SafeQueue<T>::sign_for_ready() {
+void FifoQueue<T>::sign_for_ready() {
   condt_for_ready_->signal();
 }
 
 template<typename T>
-void SafeQueue<T>::lock() {
+void FifoQueue<T>::lock() {
   mutex_->lock();
 }
 
 template<typename T>
-void SafeQueue<T>::unlock() {
+void FifoQueue<T>::unlock() {
   mutex_->unlock();
 }
 
 template<typename T>
-typename SafeQueue<T>::iterator SafeQueue<T>::begin() {
+typename FifoQueue<T>::iterator FifoQueue<T>::begin() {
   return queue_->begin();
 }
 
 template<typename T>
-typename SafeQueue<T>::iterator SafeQueue<T>::end() {
+typename FifoQueue<T>::iterator FifoQueue<T>::end() {
   return queue_->end();
 }
 
 template<typename T>
-void SafeQueue<T>::erase(typename SafeQueue<T>::iterator pos) {
+void FifoQueue<T>::erase(typename FifoQueue<T>::iterator pos) {
   queue_->erase(pos);
 }
 
 template<typename T>
-std::string SafeQueue<T>::DebugString() {
+std::string FifoQueue<T>::DebugString() {
   Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*mutex_);
   return DebugStringWithoutLock();
 }
 
 template<typename T>
-std::string SafeQueue<T>::DebugStringWithoutLock() {
-  typename SafeQueue<T>::iterator it = begin();
+std::string FifoQueue<T>::DebugStringWithoutLock() {
+  typename FifoQueue<T>::iterator it = begin();
   std::stringstream ss;
   ss << "[";
   for (; it != end(); ++it) {

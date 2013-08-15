@@ -2,7 +2,7 @@
 
 #include "base/closure.h"
 #include "base/runable.h"
-#include "base/TaskQueue.h"
+#include "base/task_queue.h"
 
 using namespace std;
 
@@ -47,7 +47,7 @@ class Task : public Poco::Runnable {
   
   virtual void run() {
     LOG(INFO) << "==> do task: " << id_;
-    Poco::Thread::sleep(1230);
+    Poco::Thread::sleep(650);
   }
  private:
   int id_;
@@ -66,7 +66,9 @@ void test_task_queue() {
   LOG(INFO) << "**> Finish add 20 tasks.";
   Poco::Thread::sleep(3000);
   LOG(INFO) << "**> StopAndWaitFinishAllTasks()";
-  task_queue->StopImmediately(); 
+//  task_queue->StopImmediately(); 
+  task_queue->StopAndWaitFinishAllTasks();
+  
 }
 
 

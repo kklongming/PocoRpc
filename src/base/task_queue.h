@@ -9,7 +9,7 @@
 #define	TASKQUEUE_H
 
 #include "base/base.h"
-#include "base/SafeQueue.h"
+#include "base/fifo_queue.h"
 #include "base/runable.h"
 
 // single thread task queue
@@ -28,7 +28,7 @@ class TaskQueue {
   bool can_add_task_;
   bool exit_;
   
-  scoped_ptr<SafeQueue<Poco::Runnable*> > pending_tasks_;
+  scoped_ptr<FifoQueue<Poco::Runnable*> > pending_tasks_;
   scoped_ptr<Poco::FastMutex> mutex_;
   scoped_ptr<Poco::Thread> worker_;
   scoped_ptr<Poco::Runnable> ra_;
