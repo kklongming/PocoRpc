@@ -9,10 +9,5 @@
 
 namespace PocoRpc {
 
-PocoRpcChannel::PocoRpcChannel() {
-}
-
-PocoRpcChannel::~PocoRpcChannel() {
-}
 
 } // namespace

@@ -15,7 +15,7 @@
 // single thread task queue
 class TaskQueue {
  public:
-  TaskQueue();
+  TaskQueue(int worker_thread_count = 1);
   virtual ~TaskQueue();
   
   // take over Poco::Runnable object
@@ -27,10 +27,13 @@ class TaskQueue {
  private:
   bool can_add_task_;
   bool exit_;
+  int worker_count_;
+  
+  typedef std::vector<Poco::Thread*> ThreadVector;
   
   scoped_ptr<FifoQueue<Poco::Runnable*> > pending_tasks_;
   scoped_ptr<Poco::FastMutex> mutex_;
-  scoped_ptr<Poco::Thread> worker_;
+  scoped_ptr<ThreadVector> workers_;
   scoped_ptr<Poco::Runnable> ra_;
   
   void RunTask();

@@ -85,5 +85,5 @@ bool Popen::exec_cmd(const std::string& cmd, const StringList* args, Result* res
   return ret == 0;
 }
 
-} // namespace jstor
+} // namespace com
 

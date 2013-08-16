@@ -35,7 +35,7 @@ private:
 
 };
 
-} // namespace jstor
+} // namespace com
 
 #endif	/* RESULT_H */
 

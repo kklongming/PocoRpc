@@ -15,7 +15,7 @@ namespace PocoRpc {
 
 class PocoRpcChannel : public google::protobuf::RpcChannel {
  public:
-  PocoRpcChannel();
+  PocoRpcChannel(const std::string& ip, int port);
   virtual ~PocoRpcChannel();
   
  private:

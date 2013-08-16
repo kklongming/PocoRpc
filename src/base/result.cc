@@ -56,5 +56,5 @@ void Result::set_result(Result* result, int32 err_code, const char* error_msg) {
   result->error_msg_ = error_msg;
 }
 
-} // namespace jstor
+} // namespace com
 

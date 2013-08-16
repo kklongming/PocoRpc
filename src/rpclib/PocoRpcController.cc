@@ -14,15 +14,15 @@
 namespace PocoRpc {
 
 PocoRpcController::PocoRpcController(PocoRpcChannel* rpc_ch) :
-    poco_rpc_ch_(rpc_ch),
-    successed_(false),
-    error_text_("Not called"),
-    is_canceled_(false),
-    on_cancel_callback_(NULL),
-    method_desc_(NULL),
-    request_(NULL),
-    response_(NULL),
-    on_done_callback_(NULL) {
+poco_rpc_ch_(rpc_ch),
+successed_(false),
+error_text_("Not called"),
+is_canceled_(false),
+on_cancel_callback_(NULL),
+method_desc_(NULL),
+request_(NULL),
+response_(NULL),
+on_done_callback_(NULL) {
   id_ = genernate_rpc_id();
   rpc_condt_mutex_.reset(new Poco::FastMutex());
   rpc_condt_.reset(new Poco::Condition());
@@ -32,7 +32,17 @@ PocoRpcController::~PocoRpcController() {
 }
 
 void PocoRpcController::Reset() {
-
+  successed_ = false;
+  error_text_ = "Not called";
+  is_canceled_ = false;
+  on_cancel_callback_ = NULL;
+  method_desc_ = NULL;
+  request_ = NULL;
+  response_ = NULL;
+  on_done_callback_ = NULL;
+  id_ = genernate_rpc_id();
+  rpc_condt_mutex_.reset(new Poco::FastMutex());
+  rpc_condt_.reset(new Poco::Condition());
 }
 
 bool PocoRpcController::Failed() const {
@@ -101,7 +111,7 @@ string PocoRpcController::DebugString() {
   ss << "  is_canceled : " << is_canceled_ << std::endl;
   ss << "  id : " << id_ << std::endl;
   if (method_desc_ != NULL) {
-  ss << "  method_desc : {\n\t" << method_desc_->DebugString() << "\n}" << std::endl;
+    ss << "  method_desc : {\n\t" << method_desc_->DebugString() << "\n}" << std::endl;
   } else {
     ss << "  method_desc : NULL" << std::endl;
   }

@@ -7,12 +7,19 @@
 
 #include "task_queue.h"
 #include <Poco/ScopedLock.h>
+#include <Poco/Format.h>
 
-TaskQueue::TaskQueue() : can_add_task_(false), exit_(true) {
+TaskQueue::TaskQueue(int worker_thread_count) : can_add_task_(false), exit_(true) {
   pending_tasks_.reset(new FifoQueue<Poco::Runnable*>());
   mutex_.reset(new Poco::FastMutex());
-  worker_.reset(new Poco::Thread());
+  workers_.reset(new TaskQueue::ThreadVector());
   ra_.reset(Poco::NewPermanentCallback(this, &TaskQueue::RunTask));
+
+  for (int i = 0; i < worker_thread_count; ++i) {
+    Poco::Thread* th = new Poco::Thread();
+    th->setName(Poco::format("TaskQueue-Worker-%d", i));
+    workers_->push_back(th);
+  }
 }
 
 TaskQueue::~TaskQueue() {
@@ -25,6 +32,7 @@ TaskQueue::~TaskQueue() {
   pending_tasks_->clear();
   pending_tasks_->unlock();
 
+  STLClear(workers_.get());
 }
 
 bool TaskQueue::AddTask(Poco::Runnable* task) {
@@ -39,10 +47,17 @@ bool TaskQueue::AddTask(Poco::Runnable* task) {
 void TaskQueue::Start() {
   {
     Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*mutex_);
+    CHECK(exit_ == true);
     can_add_task_ = true;
     exit_ = false;
   }
-  worker_->start(*ra_);
+  LOG(INFO) << "workers count: " << workers_->size();
+  TaskQueue::ThreadVector::iterator it_worker = workers_->begin();
+  for (; it_worker != workers_->end(); ++it_worker) {
+    Poco::Thread* th = *it_worker;
+    LOG(INFO) << "Start TaskQueue worker: " << th->getName();
+    th->start(*ra_);
+  }
 }
 
 // drop all unfinished tasks
@@ -56,7 +71,12 @@ void TaskQueue::StopImmediately() {
     }
     exit_ = true;
   }
-  worker_->join();
+  TaskQueue::ThreadVector::iterator it_worker = workers_->begin();
+  for (; it_worker != workers_->end(); ++it_worker) {
+    Poco::Thread* th = *it_worker;
+    LOG(INFO) << "Stop TaskQueue worker: " << th->getName();
+    th->join();
+  }
 }
 
 void TaskQueue::StopAndWaitFinishAllTasks() {
@@ -78,13 +98,19 @@ void TaskQueue::StopAndWaitFinishAllTasks() {
     }
     exit_ = true;
   }
-  worker_->join();
+  TaskQueue::ThreadVector::iterator it_worker = workers_->begin();
+  for (; it_worker != workers_->end(); ++it_worker) {
+    Poco::Thread* th = *it_worker;
+    LOG(INFO) << "Stop TaskQueue worker: " << th->getName();
+    th->join();
+  }
 }
 
 void TaskQueue::RunTask() {
   while (!exit_) {
     Poco::Runnable* task;
     if (pending_tasks_->tryPopup(&task, 500)) {
+      CHECK(task != NULL);
       task->run();
       delete task;
     }

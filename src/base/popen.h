@@ -43,7 +43,7 @@ private:
   
 };
 
-} // namespace jstor
+} // namespace com
 
 #endif	/* POPEN_H */
 

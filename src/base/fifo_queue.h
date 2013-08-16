@@ -81,6 +81,7 @@ T FifoQueue<T>::popup() {
   if (need_wait_for_ready) {
     condt_for_ready_->wait(*mutex_);
   }
+  CHECK(!queue_->empty());
   T value = queue_->back();
   queue_->pop_back();
   return value;
@@ -91,11 +92,10 @@ bool FifoQueue<T>::tryPopup(T* pv, long milliseconds) {
   Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*mutex_);
   bool need_wait_for_ready = queue_->empty();
   if (need_wait_for_ready) {
-    bool in_time = condt_for_ready_->tryWait(*mutex_, milliseconds);
-    if (!in_time) { 
-      // time out
-      return false;
-    }
+    condt_for_ready_->tryWait(*mutex_, milliseconds);
+  }
+  if (queue_->empty()) {
+    return false;
   }
   *pv = queue_->back();
   queue_->pop_back();
