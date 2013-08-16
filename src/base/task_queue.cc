@@ -45,12 +45,11 @@ bool TaskQueue::AddTask(Poco::Runnable* task) {
 }
 
 void TaskQueue::Start() {
-  {
-    Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*mutex_);
-    CHECK(exit_ == true);
-    can_add_task_ = true;
-    exit_ = false;
-  }
+  Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*mutex_);
+  CHECK(exit_ == true);
+  can_add_task_ = true;
+  exit_ = false;
+
   LOG(INFO) << "workers count: " << workers_->size();
   TaskQueue::ThreadVector::iterator it_worker = workers_->begin();
   for (; it_worker != workers_->end(); ++it_worker) {
@@ -63,14 +62,13 @@ void TaskQueue::Start() {
 // drop all unfinished tasks
 
 void TaskQueue::StopImmediately() {
-  {
-    Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*mutex_);
-    can_add_task_ = false;
-    if (exit_) {
-      return;
-    }
-    exit_ = true;
+  Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*mutex_);
+  can_add_task_ = false;
+  if (exit_) {
+    return;
   }
+  exit_ = true;
+
   TaskQueue::ThreadVector::iterator it_worker = workers_->begin();
   for (; it_worker != workers_->end(); ++it_worker) {
     Poco::Thread* th = *it_worker;
@@ -80,24 +78,23 @@ void TaskQueue::StopImmediately() {
 }
 
 void TaskQueue::StopAndWaitFinishAllTasks() {
-  {
-    Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*mutex_);
-    can_add_task_ = false;
-    if (exit_) {
-      return;
-    }
-    while (true) {
-      pending_tasks_->lock();
-      bool no_task = pending_tasks_->empty();
-      pending_tasks_->unlock();
-      if (no_task) {
-        break;
-      } else {
-        Poco::Thread::sleep(100);
-      }
-    }
-    exit_ = true;
+  Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*mutex_);
+  can_add_task_ = false;
+  if (exit_) {
+    return;
   }
+  while (true) {
+    pending_tasks_->lock();
+    bool no_task = pending_tasks_->empty();
+    pending_tasks_->unlock();
+    if (no_task) {
+      break;
+    } else {
+      Poco::Thread::sleep(100);
+    }
+  }
+  exit_ = true;
+
   TaskQueue::ThreadVector::iterator it_worker = workers_->begin();
   for (; it_worker != workers_->end(); ++it_worker) {
     Poco::Thread* th = *it_worker;

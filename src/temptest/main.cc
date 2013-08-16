@@ -58,7 +58,7 @@ class Task : public Poco::Runnable {
 };
 
 void test_task_queue() {
-  scoped_ptr<TaskQueue> task_queue(new TaskQueue(4));
+  scoped_ptr<TaskQueue> task_queue(new TaskQueue(8));
   task_queue->Start();
   for (int i = 0; i < 30; ++i) {
     Task* task = new Task(i);
