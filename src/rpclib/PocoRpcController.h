@@ -9,18 +9,21 @@
 #define	POCORPCCONTROLLER_H
 
 #include "base/base.h"
-#include "rpclib/PocoRpcChannel.h"
 
 #include <google/protobuf/service.h>
 #include <Poco/Mutex.h>
 #include <Poco/Condition.h>
+
+namespace PocoRpc {
 
 using std::string;
 using google::protobuf::Closure;
 using google::protobuf::Message;
 using google::protobuf::MethodDescriptor;
 
-namespace PocoRpc {
+class PocoRpcChannel;
+class RpcMessage;
+class BytesBuffer;
 
 class PocoRpcController : public google::protobuf::RpcController {
  public:
@@ -39,7 +42,7 @@ class PocoRpcController : public google::protobuf::RpcController {
   virtual bool Failed() const;
 
   // If Failed() is true, returns a human-readable description of the error.
-  virtual string ErrorText();
+  virtual string ErrorText() const;
 
   // Advises the RPC system that the caller desires that the RPC call be
   // canceled.  The RPC system may cancel it immediately, may wait awhile and
@@ -62,7 +65,7 @@ class PocoRpcController : public google::protobuf::RpcController {
   // If true, indicates that the client canceled the RPC, so the server may
   // as well give up on replying to it.  The server should still call the
   // final "done" callback.
-  virtual bool IsCanceled();
+  virtual bool IsCanceled() const;
 
   // Asks that the given callback be called when the RPC is canceled.  The
   // callback will always be called exactly once.  If the RPC completes without
@@ -77,6 +80,8 @@ class PocoRpcController : public google::protobuf::RpcController {
   void set_request(const Message* request);
   void set_response(Message* response);
   void set_on_done_callback(Closure* on_done_callback);
+  uint64 id();
+  BytesBuffer* NewBytesBuffer();
   
   void wait();
   // return false if timeout
@@ -108,9 +113,6 @@ class PocoRpcController : public google::protobuf::RpcController {
   
   DISALLOW_COPY_AND_ASSIGN(PocoRpcController);
 };
-
-Poco::FastMutex PocoRpcController::mutex_rpc_id_;
-uint64 PocoRpcController::last_rpc_id_(0);
 
 } // namespace
 

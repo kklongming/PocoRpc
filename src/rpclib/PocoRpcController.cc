@@ -6,12 +6,18 @@
  */
 
 #include "rpclib/PocoRpcController.h"
+#include "rpclib/PocoRpcChannel.h"
+#include "rpclib/BytesBuffer.h"
+#include "rpc_proto/poco_rpc.pb.h"
 
 #include <google/protobuf/message.h>
 #include <google/protobuf/descriptor.h>
 #include <Poco/ScopedLock.h>
 
 namespace PocoRpc {
+
+Poco::FastMutex PocoRpcController::mutex_rpc_id_;
+uint64 PocoRpcController::last_rpc_id_(0);
 
 PocoRpcController::PocoRpcController(PocoRpcChannel* rpc_ch) :
 poco_rpc_ch_(rpc_ch),
@@ -29,6 +35,7 @@ on_done_callback_(NULL) {
 }
 
 PocoRpcController::~PocoRpcController() {
+  LOG(INFO) << "Destory PocoRpcController. id=" << id_;
 }
 
 void PocoRpcController::Reset() {
@@ -49,7 +56,7 @@ bool PocoRpcController::Failed() const {
   return !successed_;
 }
 
-string PocoRpcController::ErrorText() {
+string PocoRpcController::ErrorText() const {
   return error_text_;
 }
 
@@ -65,7 +72,7 @@ void PocoRpcController::SetFailed(const string& reason) {
   error_text_ = reason;
 }
 
-bool PocoRpcController::IsCanceled() {
+bool PocoRpcController::IsCanceled() const {
   return is_canceled_;
 }
 
@@ -89,6 +96,22 @@ void PocoRpcController::set_on_done_callback(Closure* callback) {
   on_done_callback_ = callback;
 }
 
+uint64 PocoRpcController::id() {
+  return id_;
+}
+
+BytesBuffer* PocoRpcController::NewBytesBuffer() {
+  scoped_ptr<RpcMessage> rpc_msg(new RpcMessage());
+  rpc_msg->set_id(id_);
+  rpc_msg->set_method_full_name(method_desc_->full_name());
+  rpc_msg->set_message_body(request_->SerializeAsString());
+
+  BytesBuffer* rpc_buf = new BytesBuffer(rpc_msg->ByteSize());
+  rpc_msg->SerializeToArray(reinterpret_cast<void*> (rpc_buf->pbody()),
+          rpc_msg->ByteSize());
+  return rpc_buf;
+}
+
 void PocoRpcController::wait() {
   Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*rpc_condt_mutex_);
   rpc_condt_->wait(*rpc_condt_mutex_);
@@ -106,9 +129,9 @@ void PocoRpcController::signal_rpc_over() {
 string PocoRpcController::DebugString() {
   std::stringstream ss;
   ss << "{" << std::endl;
-  ss << "  successed : " << successed_ << std::endl;
+  ss << "  successed : " << (successed_ ? "yes" : "no") << std::endl;
   ss << "  error_text : " << error_text_ << std::endl;
-  ss << "  is_canceled : " << is_canceled_ << std::endl;
+  ss << "  is_canceled : " << (is_canceled_ ? "yes" : "no") << std::endl;
   ss << "  id : " << id_ << std::endl;
   if (method_desc_ != NULL) {
     ss << "  method_desc : {\n\t" << method_desc_->DebugString() << "\n}" << std::endl;
