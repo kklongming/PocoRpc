@@ -42,6 +42,8 @@ typedef Poco::AutoPtr<PocoRpcController> AutoPocoRpcControllerPtr;
 
 class PocoRpcChannel : public google::protobuf::RpcChannel {
  public:
+  friend class PocoRpcController;
+  
   PocoRpcChannel(const std::string& host, uint16 port);
   virtual ~PocoRpcChannel();
 
@@ -53,7 +55,7 @@ class PocoRpcChannel : public google::protobuf::RpcChannel {
 
   bool Connect();
   void Exit();
-  void CancelRpc(uint64 rpc_id, const std::string& reason="Canceled");
+  
 
   std::string DebugString();
 
@@ -104,6 +106,7 @@ class PocoRpcChannel : public google::protobuf::RpcChannel {
   scoped_ptr<Poco::Net::StreamSocket> socket_;
 
 
+  void RemoveCanceledRpc(uint64 rpc_id);
   Poco::Net::StreamSocket* CreateSocket();
   void reg_reactor_handler(Poco::Net::StreamSocket* sock);
   void unreg_reactor_handler(Poco::Net::StreamSocket* sock);

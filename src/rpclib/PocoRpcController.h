@@ -112,6 +112,7 @@ class PocoRpcController : public google::protobuf::RpcController, public Poco::R
   scoped_ptr<Poco::FastMutex> status_mutex_;
   
   PocoRpcController(PocoRpcChannel* rpc_ch);
+  void mark_canceled();
   
   static Poco::FastMutex mutex_rpc_id_;
   static uint64 last_rpc_id_;

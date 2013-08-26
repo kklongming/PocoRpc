@@ -114,49 +114,6 @@ void PocoRpcChannel::Exit() {
   cancel_waiting_response_rpc("Normal exit");
 }
 
-/**
- * 根据rpc_id, 将PocoRpcChannel 内部几个队列中, id相同的RpcController cancel掉
- * @param rpc_id
- * @param reason: cancel的原因
- */
-void PocoRpcChannel::CancelRpc(uint64 rpc_id, const std::string& reason) {
-  AutoPocoRpcControllerPtr rpc_ctrl(NULL);
-
-  rpc_pending_->lock();
-  RpcControllerQueue::iterator it_pending = rpc_pending_->begin();
-
-  for (; it_pending != rpc_pending_->end(); ++it_pending) {
-    if ((*it_pending)->id() == rpc_id) {
-      rpc_ctrl = *it_pending;
-      rpc_pending_->erase(it_pending);
-      break;
-    }
-  }
-  rpc_pending_->unlock();
-
-  if (!rpc_ctrl.isNull()) {
-    rpc_ctrl->SetFailed(reason);
-    rpc_ctrl->StartCancel();
-    return;
-  }
-
-  /// 在 rpc_pending_ 队列里没有找到, 则继续在 rpc_waiting_ 队列里找
-  {
-    Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*mutex_waiting_response_);
-    PocoRpcControllerMap::iterator it_waiting = rpc_waiting_->find(rpc_id);
-    if (it_waiting != rpc_waiting_->end()) { // 找到对应的
-      rpc_ctrl = it_waiting->second;
-      rpc_waiting_->erase(it_waiting);
-    }
-  }
-
-  if (!rpc_ctrl.isNull()) {
-    rpc_ctrl->SetFailed(reason);
-    rpc_ctrl->StartCancel();
-    return;
-  }
-}
-
 std::string PocoRpcChannel::DebugString() {
   std::stringstream ss;
   ss << "{" << std::endl;
@@ -175,6 +132,43 @@ std::string PocoRpcChannel::DebugString() {
 AutoPocoRpcControllerPtr PocoRpcChannel::NewRpcController() {
   AutoPocoRpcControllerPtr ptr(new PocoRpcController(this));
   return ptr;
+}
+
+/**
+ * 根据rpc_id, 将PocoRpcChannel 内部几个队列中, id相同的RpcController 删除掉
+ * 这个方法应该由 PocoRpcController::StartCancel() 方法调用. Rpc框架的使用者
+ * 不应该使用此方法.
+ * 
+ * @param rpc_id
+ */
+void PocoRpcChannel::RemoveCanceledRpc(uint64 rpc_id) {
+  // rpc 的request尚未开始发送, 所以直接从 rpc_pending_ 队列中删除
+  rpc_pending_->lock();
+  RpcControllerQueue::iterator it_pending = rpc_pending_->begin();
+
+  for (; it_pending != rpc_pending_->end(); ++it_pending) {
+    if ((*it_pending)->id() == rpc_id) {
+      rpc_pending_->erase(it_pending);
+      break;
+    }
+  }
+  rpc_pending_->unlock();
+
+  /// 在 rpc_pending_ 队列里没有找到, 则继续在 rpc_waiting_ 队列里找
+  {
+    Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*mutex_waiting_response_);
+    PocoRpcControllerMap::iterator it_waiting = rpc_waiting_->find(rpc_id);
+    if (it_waiting != rpc_waiting_->end()) { // 找到对应的
+      rpc_waiting_->erase(it_waiting);
+    }
+  }
+  
+  // 要删除的Rpc是正在发送Request的过程中, 但是又没有100% 完成发送的
+  // 只有等待继续完成发送后, rpc 移动到 rpc_waiting_ 队列里, 但是rpc标记为
+  // canceled
+  if (not rpc_sending_.isNull() && rpc_sending_->id() == rpc_id) {
+    rpc_sending_->mark_canceled();
+  }
 }
 
 Poco::Net::StreamSocket* PocoRpcChannel::CreateSocket() {
@@ -234,7 +228,7 @@ void PocoRpcChannel::onReadable(const Poco::AutoPtr<Poco::Net::ReadableNotificat
         on_socket_error();
         return;
       }
- 
+
       uint32 buf_size = ntohl(buf);
       buf_recving_.reset(new BytesBuffer(buf_size));
 
@@ -327,9 +321,11 @@ void PocoRpcChannel::onError(const Poco::AutoPtr<Poco::Net::ErrorNotification>& 
 void PocoRpcChannel::process_response() {
   while (true) {
     if (exit_) break;
-    Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*mutex_recv_buf_array_);
     BytesBuffer* recved_buf = NULL;
-    recv_buf_array_->tryPopup(&recved_buf, 200);
+    {
+      Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*mutex_recv_buf_array_);
+      recv_buf_array_->tryPopup(&recved_buf, 100);
+    }
     if (recved_buf != NULL) {
       scoped_ptr<RpcMessage> rpc_msg(new RpcMessage());
       CHECK(rpc_msg->ParseFromArray(recved_buf->pbody(),
@@ -343,8 +339,24 @@ void PocoRpcChannel::process_response() {
           rpc_waiting_->erase(it_rpc);
         }
       }
-      if (!rpc_ctrl.isNull()) {
+      if (not rpc_ctrl.isNull() && not rpc_ctrl->IsCanceled()) {
         rpc_ctrl->signal_rpc_over();
+      }
+    }
+    
+    // rpc_waiting_ 里可能会存在一些已经标记成Canceled的Rpc, 找到并将其从
+    // rpc_waiting_ 中删除. 每次循环(最外面的while循环)找到一个被标记成Canceled
+    // 的, 就删除这个. 剩余的, 留到下次循环删除. 多循环几次, 自然就都删除掉了
+    // 为了避免每次大循环的时候都去遍历一次rpc_waiting_ , 所以就检查recv_buf_array_
+    // 是否为空. 为空意味着空闲, 就开始下面的回收处理
+    if (recv_buf_array_->empty()) {
+      Poco::ScopedLockWithUnlock<Poco::FastMutex> lock_rpc_waiting_(*mutex_waiting_response_);
+      PocoRpcControllerMap::iterator it_rpc = rpc_waiting_->begin();
+      for (; it_rpc != rpc_waiting_->end(); ++it_rpc) {
+        if (it_rpc->second->IsCanceled()) {
+          rpc_waiting_->erase(it_rpc);
+          break;
+        }
       }
     }
   }

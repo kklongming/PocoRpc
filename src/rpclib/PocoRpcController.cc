@@ -34,6 +34,7 @@ PocoRpcController::~PocoRpcController() {
 }
 
 void PocoRpcController::Reset() {
+  Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*status_mutex_);
   successed_ = false;
   error_text_ = "Not called";
   is_canceled_ = false;
@@ -63,8 +64,8 @@ void PocoRpcController::StartCancel() {
   if (on_cancel_callback_ != NULL) {
     on_cancel_callback_->Run();
   }
-  // TODO 在PocoRpcChannel Cancel掉对应的RpcController, 并做destory的相应操作
-  poco_rpc_ch_->CancelRpc(id_);
+  // 在PocoRpcChannel 删除掉对应的RpcController
+  poco_rpc_ch_->RemoveCanceledRpc(id_);
   rpc_condt_->broadcast();
 }
 
@@ -159,6 +160,11 @@ string PocoRpcController::DebugString() {
   }
   ss << "}";
   return ss.str();
+}
+
+void PocoRpcController::mark_canceled() {
+  Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*status_mutex_);
+  is_canceled_ = true;
 }
 
 uint64 PocoRpcController::genernate_rpc_id() {
