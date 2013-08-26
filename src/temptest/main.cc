@@ -14,14 +14,14 @@ using namespace PocoRpc;
 void test_1() {
   scoped_ptr<PocoRpcChannel> ch(new PocoRpcChannel("localhost", 28000));
   CHECK(ch->Connect()) << "Faild to connect with rpc server.";
-  PocoRpcController* rpcctr = ch->NewRpcController();
+  AutoPocoRpcControllerPtr rpcctr = ch->NewRpcController();
   
   scoped_ptr<BaseService_Stub> bservice(new BaseService_Stub(ch.get()));
   
   PingReq req;
   PingReply reply;
   
-  bservice->Ping(rpcctr, &req, &reply, NULL);
+  bservice->Ping(rpcctr.get(), &req, &reply, NULL);
   
   LOG(INFO) << ch->DebugString();
   

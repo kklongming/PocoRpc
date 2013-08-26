@@ -13,6 +13,7 @@
 #include <google/protobuf/service.h>
 #include <Poco/Mutex.h>
 #include <Poco/Condition.h>
+#include <Poco/RefCountedObject.h>
 
 namespace PocoRpc {
 
@@ -25,13 +26,13 @@ class PocoRpcChannel;
 class RpcMessage;
 class BytesBuffer;
 
-class PocoRpcController : public google::protobuf::RpcController {
+class PocoRpcController : public google::protobuf::RpcController, public Poco::RefCountedObject {
  public:
   friend class PocoRpcChannel;
   
   virtual ~PocoRpcController();
   
-    // Resets the RpcController to its initial state so that it may be reused in
+  // Resets the RpcController to its initial state so that it may be reused in
   // a new call.  Must not be called while an RPC is in progress.
   virtual void Reset();
 
@@ -89,6 +90,8 @@ class PocoRpcController : public google::protobuf::RpcController {
   // signal for rpc finished or canceled
   void signal_rpc_over();
   
+  bool is_rpc_finished();
+  
   string DebugString();
   
  private:
@@ -96,6 +99,7 @@ class PocoRpcController : public google::protobuf::RpcController {
   bool successed_;
   string error_text_;
   bool is_canceled_;
+  bool is_normal_done_;
   Closure* on_cancel_callback_;
   uint64 id_;
   const MethodDescriptor* method_desc_;
@@ -104,6 +108,8 @@ class PocoRpcController : public google::protobuf::RpcController {
   Closure* on_done_callback_;
   scoped_ptr<Poco::FastMutex> rpc_condt_mutex_;
   scoped_ptr<Poco::Condition> rpc_condt_;
+  
+  scoped_ptr<Poco::FastMutex> status_mutex_;
   
   PocoRpcController(PocoRpcChannel* rpc_ch);
   

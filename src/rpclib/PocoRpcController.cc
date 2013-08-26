@@ -20,18 +20,13 @@ Poco::FastMutex PocoRpcController::mutex_rpc_id_;
 uint64 PocoRpcController::last_rpc_id_(0);
 
 PocoRpcController::PocoRpcController(PocoRpcChannel* rpc_ch) :
-poco_rpc_ch_(rpc_ch),
-successed_(false),
-error_text_("Not called"),
-is_canceled_(false),
-on_cancel_callback_(NULL),
-method_desc_(NULL),
-request_(NULL),
-response_(NULL),
-on_done_callback_(NULL) {
+poco_rpc_ch_(rpc_ch), successed_(false), error_text_("Not called"),
+is_canceled_(false), is_normal_done_(false), on_cancel_callback_(NULL),
+method_desc_(NULL), request_(NULL), response_(NULL), on_done_callback_(NULL) {
   id_ = genernate_rpc_id();
   rpc_condt_mutex_.reset(new Poco::FastMutex());
   rpc_condt_.reset(new Poco::Condition());
+  status_mutex_.reset(new Poco::FastMutex());
 }
 
 PocoRpcController::~PocoRpcController() {
@@ -61,11 +56,16 @@ string PocoRpcController::ErrorText() const {
 }
 
 void PocoRpcController::StartCancel() {
+  Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*status_mutex_);
+  if (is_rpc_finished()) return;
+
   is_canceled_ = true;
   if (on_cancel_callback_ != NULL) {
     on_cancel_callback_->Run();
   }
-  // to do: 在PocoRpcChannel 内处理任务队列
+  // TODO 在PocoRpcChannel Cancel掉对应的RpcController, 并做destory的相应操作
+  poco_rpc_ch_->CancelRpc(id_);
+  rpc_condt_->broadcast();
 }
 
 void PocoRpcController::SetFailed(const string& reason) {
@@ -123,7 +123,16 @@ bool PocoRpcController::tryWait(long milliseconds) {
 }
 
 void PocoRpcController::signal_rpc_over() {
+  Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*status_mutex_);
+  if (is_rpc_finished()) return;
+  is_normal_done_ = true;
   rpc_condt_->broadcast();
+}
+
+bool PocoRpcController::is_rpc_finished() {
+  if (is_canceled_) return true;
+  // not canceled
+  return is_normal_done_;
 }
 
 string PocoRpcController::DebugString() {
