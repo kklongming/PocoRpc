@@ -345,7 +345,7 @@ void PocoRpcChannel::process_response() {
     }
     
     // rpc_waiting_ 里可能会存在一些已经标记成Canceled的Rpc, 找到并将其从
-    // rpc_waiting_ 中删除. 每次循环(最外面的while循环)找到一个被标记成Canceled
+    // rpc_waiting_ 中删除. 每次大循环(最外面的while循环)找到一个被标记成Canceled
     // 的, 就删除这个. 剩余的, 留到下次循环删除. 多循环几次, 自然就都删除掉了
     // 为了避免每次大循环的时候都去遍历一次rpc_waiting_ , 所以就检查recv_buf_array_
     // 是否为空. 为空意味着空闲, 就开始下面的回收处理
@@ -364,7 +364,8 @@ void PocoRpcChannel::process_response() {
 
 /**
  * Cancel 掉 rpc_waiting_ 里所有已经发送Request, 等待response的rpc.
- * 
+ * 当socket 发生错误的时候, 或者是程序要退出, 调用exit()方法的时候, 调用此方法
+ * 将waiting 状态的rpc都cancel掉
  * @param reason : cancel的原因
  */
 void PocoRpcChannel::cancel_waiting_response_rpc(const std::string& reason) {
