@@ -148,6 +148,7 @@ void PocoRpcChannel::RemoveCanceledRpc(uint64 rpc_id) {
 
   for (; it_pending != rpc_pending_->end(); ++it_pending) {
     if ((*it_pending)->id() == rpc_id) {
+      CHECK((*it_pending)->IsCanceled()) << "RPC_ID:" << rpc_id << "is not canceled.";
       rpc_pending_->erase(it_pending);
       break;
     }
@@ -159,15 +160,17 @@ void PocoRpcChannel::RemoveCanceledRpc(uint64 rpc_id) {
     Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*mutex_waiting_response_);
     PocoRpcControllerMap::iterator it_waiting = rpc_waiting_->find(rpc_id);
     if (it_waiting != rpc_waiting_->end()) { // 找到对应的
+      CHECK(it_waiting->second->IsCanceled()) << "RPC_ID:" << rpc_id << "is not canceled.";
       rpc_waiting_->erase(it_waiting);
     }
   }
-  
+
   // 要删除的Rpc是正在发送Request的过程中, 但是又没有100% 完成发送的
   // 只有等待继续完成发送后, rpc 移动到 rpc_waiting_ 队列里, 但是rpc标记为
   // canceled
   if (not rpc_sending_.isNull() && rpc_sending_->id() == rpc_id) {
-    rpc_sending_->mark_canceled();
+    CHECK(rpc_sending_->IsCanceled()) << "RPC_ID:" << rpc_id << "is not canceled.";
+    //    rpc_sending_->mark_canceled();
   }
 }
 
@@ -220,15 +223,31 @@ uint32 get_rpc_msg_size(Poco::Net::StreamSocket* sock) {
 void PocoRpcChannel::onReadable(const Poco::AutoPtr<Poco::Net::ReadableNotification>& pNf) {
   if (buf_recving_.get() == NULL) {
     try {
+      if (socket_->available() < 4) {
+        // socket buffer 里不够4字节, 则等待下次
+        return;
+      }
+
       // 先读4个字节头部, 得到body的size
       uint32 buf;
       int recv_size = socket_->receiveBytes(reinterpret_cast<void*> (&buf), 4);
+      if (recv_size == -1) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) {
+          LOG(WARNING) << "socket is EAGAIN or EWOULDBLOCK or EINTR";
+          return;
+        } else {
+          LOG(ERROR) << "socket recv ERROR: " << errno;
+          on_socket_error();
+          return;
+        }
+      }
+
       if (recv_size == 0) {
         // 0 means socket was shutdown by server side.
         on_socket_error();
         return;
       }
-
+      CHECK(recv_size == 4) << "读头部4个字节的size出错";
       uint32 buf_size = ntohl(buf);
       buf_recving_.reset(new BytesBuffer(buf_size));
 
@@ -244,6 +263,17 @@ void PocoRpcChannel::onReadable(const Poco::AutoPtr<Poco::Net::ReadableNotificat
             reinterpret_cast<void*> (buf_recving_->pbody() + buf_recving_->get_done_size()),
             (buf_recving_->get_size() - buf_recving_->get_done_size())
             );
+    if (recv_size == -1) {
+      if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) {
+        LOG(WARNING) << "socket is EAGAIN or EWOULDBLOCK or EINTR";
+        return;
+      } else {
+        LOG(ERROR) << "socket recv ERROR: " << errno;
+        on_socket_error();
+        return;
+      }
+    }
+
     if (recv_size == 0) {
       // 0 means socket was shutdown by server side.
       on_socket_error();
@@ -291,9 +321,14 @@ void PocoRpcChannel::onWritable(const Poco::AutoPtr<Poco::Net::WritableNotificat
   int left_size = buf_sending_->get_size() - buf_sending_->get_done_size();
   int send_size = socket_->sendBytes(pbuf, left_size);
   if (send_size == -1) {
-    LOG(ERROR) << "socket send error: " << errno;
-    on_socket_error();
-    return;
+    if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) {
+      LOG(WARNING) << "socket is EAGAIN or EWOULDBLOCK or EINTR";
+      return;
+    } else {
+      LOG(ERROR) << "socket send ERROR: " << errno;
+      on_socket_error();
+      return;
+    }
   }
 
   if (send_size == left_size) {
@@ -343,7 +378,7 @@ void PocoRpcChannel::process_response() {
         rpc_ctrl->signal_rpc_over();
       }
     }
-    
+
     // rpc_waiting_ 里可能会存在一些已经标记成Canceled的Rpc, 找到并将其从
     // rpc_waiting_ 中删除. 每次大循环(最外面的while循环)找到一个被标记成Canceled
     // 的, 就删除这个. 剩余的, 留到下次循环删除. 多循环几次, 自然就都删除掉了
