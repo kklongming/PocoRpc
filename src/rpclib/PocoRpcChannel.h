@@ -55,7 +55,10 @@ class PocoRpcChannel : public google::protobuf::RpcChannel {
 
   bool Connect();
   void Exit();
+  void set_auto_reconnect(bool auto_reconnect);
+  uint32 get_re_connect_times();
   
+  void NotifyOnReConnectFaild(google::protobuf::Closure* callback);
 
   std::string DebugString();
 
@@ -72,6 +75,10 @@ class PocoRpcChannel : public google::protobuf::RpcChannel {
 
   // 标记是否已经连接上rpc server
   bool connected_;
+  
+  // 尝试重连的次数
+  uint32 re_connect_times_;
+  bool auto_reconnect_;
 
   // 等待处理的Rpc队列
   scoped_ptr<RpcControllerQueue> rpc_pending_;
@@ -100,11 +107,11 @@ class PocoRpcChannel : public google::protobuf::RpcChannel {
   scoped_ptr<Poco::Thread> response_worker_;
   scoped_ptr<Poco::Runnable> ra_response_;
 
-  bool reacotr_running_;
   scoped_ptr<Poco::Net::SocketReactor> reactor_;
   scoped_ptr<Poco::Net::SocketAddress> address_;
   scoped_ptr<Poco::Net::StreamSocket> socket_;
 
+  scoped_ptr<google::protobuf::Closure> on_reconnect_faild_cb_;
 
   void RemoveCanceledRpc(uint64 rpc_id);
   Poco::Net::StreamSocket* CreateSocket();
@@ -118,6 +125,7 @@ class PocoRpcChannel : public google::protobuf::RpcChannel {
   void cancel_waiting_response_rpc(const std::string& reason);
   
   void on_socket_error();
+  void auto_reconnect();
   
   DISALLOW_COPY_AND_ASSIGN(PocoRpcChannel);
 };

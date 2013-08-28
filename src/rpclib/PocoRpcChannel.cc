@@ -10,6 +10,7 @@
 #include "rpclib/BytesBuffer.h"
 #include "rpc_proto/poco_rpc.pb.h"
 #include "base/runable.h"
+#include "base/base.h"
 
 #include <Poco/Thread.h>
 #include <Poco/Mutex.h>
@@ -23,11 +24,22 @@
 #include <Poco/Exception.h>
 #include <Poco/NObserver.h>
 
+DEFINE_int64(socket_send_timeout, 0, "socket send timeout in millisecond. \
+0: using system default value.");
+DEFINE_int64(socket_recv_timeout, 0, "socket recv timeout in millisecond. \
+0: using system default value.");
+DEFINE_int32(socket_send_buf_size, 0, "socket send buffer size in Bytes. \
+0: using system default value.");
+DEFINE_int32(socket_recv_buf_size, 0, "socket recv buffer size in Bytes. \
+0: using system default value.");
+DEFINE_int32(reconnect_interval, 200, "socket reconnect interval time in millisecond.");
+
 namespace PocoRpc {
 
 PocoRpcChannel::PocoRpcChannel(const std::string& host, uint16 port) :
-exit_(true), connected_(false), rpc_sending_(NULL), reacotr_running_(false),
-buf_sending_(NULL), socket_(NULL) {
+exit_(true), connected_(false), re_connect_times_(0), auto_reconnect_(true),
+rpc_sending_(NULL), buf_sending_(NULL), socket_(NULL),
+on_reconnect_faild_cb_(NULL) {
   rpc_pending_.reset(new RpcControllerQueue());
   rpc_waiting_.reset(new PocoRpcControllerMap());
   mutex_waiting_response_.reset(new Poco::FastMutex());
@@ -38,11 +50,16 @@ buf_sending_(NULL), socket_(NULL) {
   ra_response_.reset(Poco::NewPermanentCallback(this, &PocoRpcChannel::process_response));
   reactor_.reset(new Poco::Net::SocketReactor());
   address_.reset(new Poco::Net::SocketAddress(host, port));
+
+  // net_worker_, response_worker_ 2个线程在构造函数里启动, 在析构函数里stop
+  net_worker_->start(*reactor_);
+  response_worker_->start(*ra_response_);
 }
 
 PocoRpcChannel::~PocoRpcChannel() {
-  Exit();
-
+  if (not exit_) {
+    Exit();
+  }
   rpc_pending_->clear();
   rpc_waiting_->clear();
   STLClear(recv_buf_array_.get());
@@ -87,31 +104,49 @@ bool PocoRpcChannel::Connect() {
   } catch (Poco::Exception ex) {
     LOG(ERROR) << "Faild to connect rpc server: " << address_->toString() <<
             " Exception: " << ex.message();
+    socket_->shutdown();
+    socket_.reset(NULL);
     connected_ = false;
     return false;
   }
   // successed cennected with rpc server
-  reg_reactor_handler(socket_.get());
   connected_ = true;
-  net_worker_->start(*reactor_);
-  reacotr_running_ = true;
-
-  response_worker_->start(*ra_response_);
-
+  reg_reactor_handler(socket_.get());
   return true;
 }
+
+// Exit() 方法只能被调用一次.
 
 void PocoRpcChannel::Exit() {
   CHECK(exit_ == false);
   exit_ = true;
   reactor_->stop();
-  unreg_reactor_handler(socket_.get());
   net_worker_->join();
-  reacotr_running_ = false;
+  if (socket_.get() != NULL) {
+    unreg_reactor_handler(socket_.get());
+  }
 
-  response_worker_->join();
+  response_worker_->join(); // stopped by set exit_=true
 
   cancel_waiting_response_rpc("Normal exit");
+}
+
+void PocoRpcChannel::set_auto_reconnect(bool auto_reconnect) {
+  auto_reconnect_ = auto_reconnect;
+}
+
+uint32 PocoRpcChannel::get_re_connect_times() {
+  return re_connect_times_;
+}
+
+/**
+ * 设置当重新连接失败时会调用的callback. callback函数里可以通过
+ * get_re_connect_times() 函数得到已经尝试重连多少次. 可以通过
+ * set_auto_reconnect(true/false) 来设置是否继续重连
+ * @param callback
+ */
+void PocoRpcChannel::NotifyOnReConnectFaild(google::protobuf::Closure* callback) {
+  on_reconnect_faild_cb_.reset(callback);
 }
 
 std::string PocoRpcChannel::DebugString() {
@@ -180,7 +215,18 @@ Poco::Net::StreamSocket* PocoRpcChannel::CreateSocket() {
   sock->setBlocking(false);
   sock->setKeepAlive(true);
   sock->setNoDelay(true);
-  sock->setReceiveTimeout(Poco::Timespan(5, 0));
+  if (FLAGS_socket_recv_timeout > 0) {
+    sock->setReceiveTimeout(Poco::Timespan(FLAGS_socket_recv_timeout));
+  }
+  if (FLAGS_socket_send_timeout > 0) {
+    sock->setSendTimeout(Poco::Timespan(FLAGS_socket_send_timeout));
+  }
+  if (FLAGS_socket_recv_buf_size > 0) {
+    sock->setReceiveBufferSize(FLAGS_socket_recv_buf_size);
+  }
+  if (FLAGS_socket_send_buf_size > 0) {
+    sock->setSendBufferSize(FLAGS_socket_send_buf_size);
+  }
 }
 
 void PocoRpcChannel::reg_reactor_handler(Poco::Net::StreamSocket* sock) {
@@ -404,34 +450,42 @@ void PocoRpcChannel::process_response() {
  * @param reason : cancel的原因
  */
 void PocoRpcChannel::cancel_waiting_response_rpc(const std::string& reason) {
-  Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*mutex_waiting_response_);
-  PocoRpcControllerMap::iterator it = rpc_waiting_->begin();
-  for (; it != rpc_waiting_->end(); ++it) {
-    AutoPocoRpcControllerPtr rpc_ctrl = it->second;
+  scoped_ptr< std::vector<AutoPocoRpcControllerPtr> > tmp_rpc_list(
+            new std::vector<AutoPocoRpcControllerPtr>());
+  {
+    Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*mutex_waiting_response_);
+    PocoRpcControllerMap::iterator it = rpc_waiting_->begin();
+    for (; it != rpc_waiting_->end(); ++it) {
+      tmp_rpc_list->push_back(it->second);
+    }
+  }
+            
+  std::vector<AutoPocoRpcControllerPtr>::iterator it_tobe_canceled = tmp_rpc_list->begin();
+  for (; it_tobe_canceled != tmp_rpc_list->end(); ++it_tobe_canceled) {
+    AutoPocoRpcControllerPtr rpc_ctrl = *it_tobe_canceled;
     rpc_ctrl->SetFailed(reason);
     rpc_ctrl->StartCancel();
   }
+  tmp_rpc_list->clear();
 }
 
 /// on_socket_error() 是在reactor的线程上被调用的, 所以不会有并发的问题.
 /// 但是它可能会被多次调用. 所以要进行一些检查, 要采取防御性编码
 
 void PocoRpcChannel::on_socket_error() {
-  if (not reacotr_running_) {
-    // 1. 停止 reactor 线程
-    reactor_->stop();
-    net_worker_->join();
-    reacotr_running_ = false;
-  }
+  CHECK(socket_.get() != NULL) << "只有socket 发送错误的时候才会调用此方法, 因此socket_不应该为NULL";
 
-  // 2. 关闭socket
-  if (socket_.get() != NULL) {
-    socket_->shutdown();
-    socket_.reset(NULL);
-  }
+  // 2. 取消reactor 对此socket进行select/poll检测, 关闭socket, 
+  unreg_reactor_handler(socket_.get());
+  socket_->shutdown();
+  socket_.reset(NULL);
+  connected_ = false;
+
 
   // 3. cancel 掉所有已经发送Request, 等待Response的Rpc. 因为socket断掉后,
-  //    这些rpc已经没有机会再收到Response了.
+  //    这些rpc已经没有机会再收到Response了. 
+  // @todo 如果以后实现了client_id, 服务器端根据client_id向客户端继续发送之前
+  // 没有发送的的response就可以不必cancel_waiting_response_rpc
   cancel_waiting_response_rpc("socket error");
 
   // 4. 丢弃正在接收状态(未能100%完成接收)的 ByteBuffer
@@ -445,7 +499,28 @@ void PocoRpcChannel::on_socket_error() {
   }
 
   // TODO 增加处理自动重连的代码
+  auto_reconnect();
+}
 
+void PocoRpcChannel::auto_reconnect() {
+  if (connected_) return;
+  CHECK(socket_.get() == NULL);
+  while (auto_reconnect_) {
+    bool ok = Connect();
+    re_connect_times_++;
+    if (ok) {
+      re_connect_times_ = 0; // 重连成功, 则计数归零
+      break;
+    } else {
+      // 重连失败, 则调用指定的callback
+      // 可以在callback函数里检查已经重连的次数, 通过set_auto_reconnect(false)
+      // 取消重连.
+      if (on_reconnect_faild_cb_.get() != NULL) {
+        on_reconnect_faild_cb_->Run();
+      }
+    }
+    Poco::Thread::sleep(FLAGS_reconnect_interval);
+  }
 }
 
 } // namespace
