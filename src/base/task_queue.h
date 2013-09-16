@@ -23,6 +23,7 @@ class TaskQueue {
   void Start();
   void StopImmediately(); // drop all unfinished tasks
   void StopAndWaitFinishAllTasks();
+  void ClearTasks();
   
  private:
   bool can_add_task_;

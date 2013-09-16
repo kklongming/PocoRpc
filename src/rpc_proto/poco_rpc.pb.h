@@ -98,10 +98,22 @@ class RpcMessage : public ::google::protobuf::Message {
   inline ::google::protobuf::uint64 id() const;
   inline void set_id(::google::protobuf::uint64 value);
 
-  // required string method_full_name = 2;
+  // required string client_uuid = 2;
+  inline bool has_client_uuid() const;
+  inline void clear_client_uuid();
+  static const int kClientUuidFieldNumber = 2;
+  inline const ::std::string& client_uuid() const;
+  inline void set_client_uuid(const ::std::string& value);
+  inline void set_client_uuid(const char* value);
+  inline void set_client_uuid(const char* value, size_t size);
+  inline ::std::string* mutable_client_uuid();
+  inline ::std::string* release_client_uuid();
+  inline void set_allocated_client_uuid(::std::string* client_uuid);
+
+  // required string method_full_name = 3;
   inline bool has_method_full_name() const;
   inline void clear_method_full_name();
-  static const int kMethodFullNameFieldNumber = 2;
+  static const int kMethodFullNameFieldNumber = 3;
   inline const ::std::string& method_full_name() const;
   inline void set_method_full_name(const ::std::string& value);
   inline void set_method_full_name(const char* value);
@@ -110,10 +122,10 @@ class RpcMessage : public ::google::protobuf::Message {
   inline ::std::string* release_method_full_name();
   inline void set_allocated_method_full_name(::std::string* method_full_name);
 
-  // required string message_body = 3;
+  // required string message_body = 4;
   inline bool has_message_body() const;
   inline void clear_message_body();
-  static const int kMessageBodyFieldNumber = 3;
+  static const int kMessageBodyFieldNumber = 4;
   inline const ::std::string& message_body() const;
   inline void set_message_body(const ::std::string& value);
   inline void set_message_body(const char* value);
@@ -126,6 +138,8 @@ class RpcMessage : public ::google::protobuf::Message {
  private:
   inline void set_has_id();
   inline void clear_has_id();
+  inline void set_has_client_uuid();
+  inline void clear_has_client_uuid();
   inline void set_has_method_full_name();
   inline void clear_has_method_full_name();
   inline void set_has_message_body();
@@ -134,11 +148,12 @@ class RpcMessage : public ::google::protobuf::Message {
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::google::protobuf::uint64 id_;
+  ::std::string* client_uuid_;
   ::std::string* method_full_name_;
   ::std::string* message_body_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
 
   friend void  protobuf_AddDesc_poco_5frpc_2eproto();
   friend void protobuf_AssignDesc_poco_5frpc_2eproto();
@@ -176,15 +191,85 @@ inline void RpcMessage::set_id(::google::protobuf::uint64 value) {
   id_ = value;
 }
 
-// required string method_full_name = 2;
-inline bool RpcMessage::has_method_full_name() const {
+// required string client_uuid = 2;
+inline bool RpcMessage::has_client_uuid() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
-inline void RpcMessage::set_has_method_full_name() {
+inline void RpcMessage::set_has_client_uuid() {
   _has_bits_[0] |= 0x00000002u;
 }
-inline void RpcMessage::clear_has_method_full_name() {
+inline void RpcMessage::clear_has_client_uuid() {
   _has_bits_[0] &= ~0x00000002u;
+}
+inline void RpcMessage::clear_client_uuid() {
+  if (client_uuid_ != &::google::protobuf::internal::kEmptyString) {
+    client_uuid_->clear();
+  }
+  clear_has_client_uuid();
+}
+inline const ::std::string& RpcMessage::client_uuid() const {
+  return *client_uuid_;
+}
+inline void RpcMessage::set_client_uuid(const ::std::string& value) {
+  set_has_client_uuid();
+  if (client_uuid_ == &::google::protobuf::internal::kEmptyString) {
+    client_uuid_ = new ::std::string;
+  }
+  client_uuid_->assign(value);
+}
+inline void RpcMessage::set_client_uuid(const char* value) {
+  set_has_client_uuid();
+  if (client_uuid_ == &::google::protobuf::internal::kEmptyString) {
+    client_uuid_ = new ::std::string;
+  }
+  client_uuid_->assign(value);
+}
+inline void RpcMessage::set_client_uuid(const char* value, size_t size) {
+  set_has_client_uuid();
+  if (client_uuid_ == &::google::protobuf::internal::kEmptyString) {
+    client_uuid_ = new ::std::string;
+  }
+  client_uuid_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* RpcMessage::mutable_client_uuid() {
+  set_has_client_uuid();
+  if (client_uuid_ == &::google::protobuf::internal::kEmptyString) {
+    client_uuid_ = new ::std::string;
+  }
+  return client_uuid_;
+}
+inline ::std::string* RpcMessage::release_client_uuid() {
+  clear_has_client_uuid();
+  if (client_uuid_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = client_uuid_;
+    client_uuid_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void RpcMessage::set_allocated_client_uuid(::std::string* client_uuid) {
+  if (client_uuid_ != &::google::protobuf::internal::kEmptyString) {
+    delete client_uuid_;
+  }
+  if (client_uuid) {
+    set_has_client_uuid();
+    client_uuid_ = client_uuid;
+  } else {
+    clear_has_client_uuid();
+    client_uuid_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// required string method_full_name = 3;
+inline bool RpcMessage::has_method_full_name() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void RpcMessage::set_has_method_full_name() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void RpcMessage::clear_has_method_full_name() {
+  _has_bits_[0] &= ~0x00000004u;
 }
 inline void RpcMessage::clear_method_full_name() {
   if (method_full_name_ != &::google::protobuf::internal::kEmptyString) {
@@ -246,15 +331,15 @@ inline void RpcMessage::set_allocated_method_full_name(::std::string* method_ful
   }
 }
 
-// required string message_body = 3;
+// required string message_body = 4;
 inline bool RpcMessage::has_message_body() const {
-  return (_has_bits_[0] & 0x00000004u) != 0;
+  return (_has_bits_[0] & 0x00000008u) != 0;
 }
 inline void RpcMessage::set_has_message_body() {
-  _has_bits_[0] |= 0x00000004u;
+  _has_bits_[0] |= 0x00000008u;
 }
 inline void RpcMessage::clear_has_message_body() {
-  _has_bits_[0] &= ~0x00000004u;
+  _has_bits_[0] &= ~0x00000008u;
 }
 inline void RpcMessage::clear_message_body() {
   if (message_body_ != &::google::protobuf::internal::kEmptyString) {

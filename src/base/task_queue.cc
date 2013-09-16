@@ -36,7 +36,7 @@ TaskQueue::~TaskQueue() {
 }
 
 bool TaskQueue::AddTask(Poco::Runnable* task) {
-  Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*mutex_);
+  Poco::ScopedLock<Poco::FastMutex> lock(*mutex_);
   if (exit_) {
     return false;
   }
@@ -45,7 +45,7 @@ bool TaskQueue::AddTask(Poco::Runnable* task) {
 }
 
 void TaskQueue::Start() {
-  Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*mutex_);
+  Poco::ScopedLock<Poco::FastMutex> lock(*mutex_);
   CHECK(exit_ == true);
   can_add_task_ = true;
   exit_ = false;
@@ -62,7 +62,7 @@ void TaskQueue::Start() {
 // drop all unfinished tasks
 
 void TaskQueue::StopImmediately() {
-  Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*mutex_);
+  Poco::ScopedLock<Poco::FastMutex> lock(*mutex_);
   can_add_task_ = false;
   if (exit_) {
     return;
@@ -78,7 +78,7 @@ void TaskQueue::StopImmediately() {
 }
 
 void TaskQueue::StopAndWaitFinishAllTasks() {
-  Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*mutex_);
+  Poco::ScopedLock<Poco::FastMutex> lock(*mutex_);
   can_add_task_ = false;
   if (exit_) {
     return;
@@ -101,6 +101,17 @@ void TaskQueue::StopAndWaitFinishAllTasks() {
     LOG(INFO) << "Stop TaskQueue worker: " << th->getName();
     th->join();
   }
+}
+
+void TaskQueue::ClearTasks() {
+  pending_tasks_->lock();
+  FifoQueue<Poco::Runnable*>::iterator it = pending_tasks_->begin();
+  for (; it != pending_tasks_->end(); ++it) {
+    Poco::Runnable* tmp = *it;
+    delete tmp;
+  }
+  pending_tasks_->clear();
+  pending_tasks_->unlock();
 }
 
 void TaskQueue::RunTask() {

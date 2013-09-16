@@ -3,7 +3,8 @@ package PocoRpc;
 // 既做Request Message, 又做Response Message
 message RpcMessage {
     required uint64 id = 1;
-    required string method_full_name = 2;
-    required string message_body = 3;
+    required string client_uuid = 2;
+    required string method_full_name = 3;
+    required string message_body = 4;
 }
 

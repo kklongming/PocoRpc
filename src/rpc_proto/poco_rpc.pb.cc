@@ -34,8 +34,9 @@ void protobuf_AssignDesc_poco_5frpc_2eproto() {
       "poco_rpc.proto");
   GOOGLE_CHECK(file != NULL);
   RpcMessage_descriptor_ = file->message_type(0);
-  static const int RpcMessage_offsets_[3] = {
+  static const int RpcMessage_offsets_[4] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(RpcMessage, id_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(RpcMessage, client_uuid_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(RpcMessage, method_full_name_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(RpcMessage, message_body_),
   };
@@ -80,9 +81,9 @@ void protobuf_AddDesc_poco_5frpc_2eproto() {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
-    "\n\016poco_rpc.proto\022\007PocoRpc\"H\n\nRpcMessage\022"
-    "\n\n\002id\030\001 \002(\004\022\030\n\020method_full_name\030\002 \002(\t\022\024\n"
-    "\014message_body\030\003 \002(\t", 99);
+    "\n\016poco_rpc.proto\022\007PocoRpc\"]\n\nRpcMessage\022"
+    "\n\n\002id\030\001 \002(\004\022\023\n\013client_uuid\030\002 \002(\t\022\030\n\020meth"
+    "od_full_name\030\003 \002(\t\022\024\n\014message_body\030\004 \002(\t", 120);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "poco_rpc.proto", &protobuf_RegisterTypes);
   RpcMessage::default_instance_ = new RpcMessage();
@@ -101,6 +102,7 @@ struct StaticDescriptorInitializer_poco_5frpc_2eproto {
 
 #ifndef _MSC_VER
 const int RpcMessage::kIdFieldNumber;
+const int RpcMessage::kClientUuidFieldNumber;
 const int RpcMessage::kMethodFullNameFieldNumber;
 const int RpcMessage::kMessageBodyFieldNumber;
 #endif  // !_MSC_VER
@@ -122,6 +124,7 @@ RpcMessage::RpcMessage(const RpcMessage& from)
 void RpcMessage::SharedCtor() {
   _cached_size_ = 0;
   id_ = GOOGLE_ULONGLONG(0);
+  client_uuid_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   method_full_name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   message_body_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
@@ -132,6 +135,9 @@ RpcMessage::~RpcMessage() {
 }
 
 void RpcMessage::SharedDtor() {
+  if (client_uuid_ != &::google::protobuf::internal::kEmptyString) {
+    delete client_uuid_;
+  }
   if (method_full_name_ != &::google::protobuf::internal::kEmptyString) {
     delete method_full_name_;
   }
@@ -166,6 +172,11 @@ RpcMessage* RpcMessage::New() const {
 void RpcMessage::Clear() {
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     id_ = GOOGLE_ULONGLONG(0);
+    if (has_client_uuid()) {
+      if (client_uuid_ != &::google::protobuf::internal::kEmptyString) {
+        client_uuid_->clear();
+      }
+    }
     if (has_method_full_name()) {
       if (method_full_name_ != &::google::protobuf::internal::kEmptyString) {
         method_full_name_->clear();
@@ -198,12 +209,29 @@ bool RpcMessage::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(18)) goto parse_method_full_name;
+        if (input->ExpectTag(18)) goto parse_client_uuid;
         break;
       }
 
-      // required string method_full_name = 2;
+      // required string client_uuid = 2;
       case 2: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_client_uuid:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_client_uuid()));
+          ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+            this->client_uuid().data(), this->client_uuid().length(),
+            ::google::protobuf::internal::WireFormat::PARSE);
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(26)) goto parse_method_full_name;
+        break;
+      }
+
+      // required string method_full_name = 3;
+      case 3: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_method_full_name:
@@ -215,12 +243,12 @@ bool RpcMessage::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(26)) goto parse_message_body;
+        if (input->ExpectTag(34)) goto parse_message_body;
         break;
       }
 
-      // required string message_body = 3;
-      case 3: {
+      // required string message_body = 4;
+      case 4: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_message_body:
@@ -259,22 +287,31 @@ void RpcMessage::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(1, this->id(), output);
   }
 
-  // required string method_full_name = 2;
+  // required string client_uuid = 2;
+  if (has_client_uuid()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->client_uuid().data(), this->client_uuid().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      2, this->client_uuid(), output);
+  }
+
+  // required string method_full_name = 3;
   if (has_method_full_name()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->method_full_name().data(), this->method_full_name().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     ::google::protobuf::internal::WireFormatLite::WriteString(
-      2, this->method_full_name(), output);
+      3, this->method_full_name(), output);
   }
 
-  // required string message_body = 3;
+  // required string message_body = 4;
   if (has_message_body()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->message_body().data(), this->message_body().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     ::google::protobuf::internal::WireFormatLite::WriteString(
-      3, this->message_body(), output);
+      4, this->message_body(), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -290,24 +327,34 @@ void RpcMessage::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(1, this->id(), target);
   }
 
-  // required string method_full_name = 2;
+  // required string client_uuid = 2;
+  if (has_client_uuid()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->client_uuid().data(), this->client_uuid().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        2, this->client_uuid(), target);
+  }
+
+  // required string method_full_name = 3;
   if (has_method_full_name()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->method_full_name().data(), this->method_full_name().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        2, this->method_full_name(), target);
+        3, this->method_full_name(), target);
   }
 
-  // required string message_body = 3;
+  // required string message_body = 4;
   if (has_message_body()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->message_body().data(), this->message_body().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        3, this->message_body(), target);
+        4, this->message_body(), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -328,14 +375,21 @@ int RpcMessage::ByteSize() const {
           this->id());
     }
 
-    // required string method_full_name = 2;
+    // required string client_uuid = 2;
+    if (has_client_uuid()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->client_uuid());
+    }
+
+    // required string method_full_name = 3;
     if (has_method_full_name()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::StringSize(
           this->method_full_name());
     }
 
-    // required string message_body = 3;
+    // required string message_body = 4;
     if (has_message_body()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::StringSize(
@@ -372,6 +426,9 @@ void RpcMessage::MergeFrom(const RpcMessage& from) {
     if (from.has_id()) {
       set_id(from.id());
     }
+    if (from.has_client_uuid()) {
+      set_client_uuid(from.client_uuid());
+    }
     if (from.has_method_full_name()) {
       set_method_full_name(from.method_full_name());
     }
@@ -395,7 +452,7 @@ void RpcMessage::CopyFrom(const RpcMessage& from) {
 }
 
 bool RpcMessage::IsInitialized() const {
-  if ((_has_bits_[0] & 0x00000007) != 0x00000007) return false;
+  if ((_has_bits_[0] & 0x0000000f) != 0x0000000f) return false;
 
   return true;
 }
@@ -403,6 +460,7 @@ bool RpcMessage::IsInitialized() const {
 void RpcMessage::Swap(RpcMessage* other) {
   if (other != this) {
     std::swap(id_, other->id_);
+    std::swap(client_uuid_, other->client_uuid_);
     std::swap(method_full_name_, other->method_full_name_);
     std::swap(message_body_, other->message_body_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);

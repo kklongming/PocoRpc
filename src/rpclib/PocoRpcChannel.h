@@ -46,6 +46,8 @@ class PocoRpcChannel : public google::protobuf::RpcChannel {
   
   PocoRpcChannel(const std::string& host, uint16 port);
   virtual ~PocoRpcChannel();
+  
+  void init();
 
   virtual void CallMethod(const google::protobuf::MethodDescriptor* method,
           google::protobuf::RpcController* controller,
@@ -60,6 +62,7 @@ class PocoRpcChannel : public google::protobuf::RpcChannel {
   
   void NotifyOnReConnectFaild(google::protobuf::Closure* callback);
 
+  const std::string& get_uuid();
   std::string DebugString();
 
   AutoPocoRpcControllerPtr NewRpcController();
@@ -70,6 +73,8 @@ class PocoRpcChannel : public google::protobuf::RpcChannel {
   typedef FifoQueue<BytesBuffer*> BytesBufferQueue;
   typedef FifoQueue<AutoPocoRpcControllerPtr> RpcControllerQueue;
 
+  std::string uuid_;
+  
   // 指示是否终止
   bool exit_;
 

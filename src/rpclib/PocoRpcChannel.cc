@@ -23,6 +23,8 @@
 #include <Poco/Timespan.h>
 #include <Poco/Exception.h>
 #include <Poco/NObserver.h>
+#include <Poco/UUID.h>
+#include <Poco/UUIDGenerator.h>
 
 DEFINE_int64(socket_send_timeout, 0, "socket send timeout in millisecond. \
 0: using system default value.");
@@ -40,20 +42,13 @@ PocoRpcChannel::PocoRpcChannel(const std::string& host, uint16 port) :
 exit_(true), connected_(false), re_connect_times_(0), auto_reconnect_(true),
 rpc_sending_(NULL), buf_sending_(NULL), socket_(NULL),
 on_reconnect_faild_cb_(NULL) {
+  uuid_ = Poco::UUIDGenerator::defaultGenerator().createRandom().toString();
   rpc_pending_.reset(new RpcControllerQueue());
   rpc_waiting_.reset(new PocoRpcControllerMap());
   mutex_waiting_response_.reset(new Poco::FastMutex());
   recv_buf_array_.reset(new BytesBufferQueue());
   mutex_recv_buf_array_.reset(new Poco::FastMutex());
-  net_worker_.reset(new Poco::Thread());
-  response_worker_.reset(new Poco::Thread());
-  ra_response_.reset(Poco::NewPermanentCallback(this, &PocoRpcChannel::process_response));
-  reactor_.reset(new Poco::Net::SocketReactor());
   address_.reset(new Poco::Net::SocketAddress(host, port));
-
-  // net_worker_, response_worker_ 2个线程在构造函数里启动, 在析构函数里stop
-  net_worker_->start(*reactor_);
-  response_worker_->start(*ra_response_);
 }
 
 PocoRpcChannel::~PocoRpcChannel() {
@@ -63,6 +58,20 @@ PocoRpcChannel::~PocoRpcChannel() {
   rpc_pending_->clear();
   rpc_waiting_->clear();
   STLClear(recv_buf_array_.get());
+}
+
+/// must be called after constructor
+
+void PocoRpcChannel::init() {
+  net_worker_.reset(new Poco::Thread());
+  response_worker_.reset(new Poco::Thread());
+  ra_response_.reset(Poco::NewPermanentCallback(this, &PocoRpcChannel::process_response));
+
+  reactor_.reset(new Poco::Net::SocketReactor());
+  // net_worker_, response_worker_ 2个线程在构造函数里启动, 在析构函数里stop
+  net_worker_->start(*reactor_);
+  response_worker_->start(*ra_response_);
+  exit_ = false;
 }
 
 /**
@@ -115,8 +124,9 @@ bool PocoRpcChannel::Connect() {
   return true;
 }
 
-// Exit() 方法只能被调用一次.
-
+/**
+ * Exit() 方法只能被调用一次.
+ */
 void PocoRpcChannel::Exit() {
   CHECK(exit_ == false);
   exit_ = true;
@@ -147,6 +157,10 @@ uint32 PocoRpcChannel::get_re_connect_times() {
  */
 void PocoRpcChannel::NotifyOnReConnectFaild(google::protobuf::Closure* callback) {
   on_reconnect_faild_cb_.reset(callback);
+}
+
+const std::string& PocoRpcChannel::get_uuid() {
+  return uuid_;
 }
 
 std::string PocoRpcChannel::DebugString() {
@@ -192,7 +206,7 @@ void PocoRpcChannel::RemoveCanceledRpc(uint64 rpc_id) {
 
   /// 在 rpc_pending_ 队列里没有找到, 则继续在 rpc_waiting_ 队列里找
   {
-    Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*mutex_waiting_response_);
+    Poco::ScopedLock<Poco::FastMutex> lock(*mutex_waiting_response_);
     PocoRpcControllerMap::iterator it_waiting = rpc_waiting_->find(rpc_id);
     if (it_waiting != rpc_waiting_->end()) { // 找到对应的
       CHECK(it_waiting->second->IsCanceled()) << "RPC_ID:" << rpc_id << "is not canceled.";
@@ -329,7 +343,7 @@ void PocoRpcChannel::onReadable(const Poco::AutoPtr<Poco::Net::ReadableNotificat
     buf_recving_->set_done_size(buf_recving_->get_done_size() + recv_size);
     if (buf_recving_->get_done_size() == buf_recving_->get_size()) {
       // response buf 接收 100%
-      Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*mutex_recv_buf_array_);
+      Poco::ScopedLock<Poco::FastMutex> lock(*mutex_recv_buf_array_);
       recv_buf_array_->push(buf_recving_.release()); // 小心, 不能使用Reset() 方法
     }
   } catch (Poco::Exception ex) {
@@ -347,8 +361,12 @@ void PocoRpcChannel::onWritable(const Poco::AutoPtr<Poco::Net::WritableNotificat
         break;
       }
       AutoPocoRpcControllerPtr tmp_rpc(NULL);
-      rpc_pending_->tryPopup(&tmp_rpc, 100);
-      if (not tmp_rpc.isNull()) {
+      rpc_pending_->tryPopup(&tmp_rpc, 0);
+      if (tmp_rpc.isNull()) {
+        /// rpc_pending_ 队列里没有需要发送的request, 推出, 等待下一次
+        /// onWritable 操作
+        return;
+      } else {
         if (tmp_rpc->IsCanceled()) {
           // rpc is canceled, so ignore it and continue to get next one
           continue;
@@ -357,37 +375,43 @@ void PocoRpcChannel::onWritable(const Poco::AutoPtr<Poco::Net::WritableNotificat
           buf_sending_.reset(rpc_sending_->NewBytesBuffer());
           break;
         }
-      } else { // tmp_rpc is NULL
-        continue;
       }
     }
   }
-  // buf_sending_ ready
-  void* pbuf = reinterpret_cast<void*> (buf_sending_->pbody() + buf_sending_->get_done_size());
-  int left_size = buf_sending_->get_size() - buf_sending_->get_done_size();
-  int send_size = socket_->sendBytes(pbuf, left_size);
-  if (send_size == -1) {
-    if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) {
-      LOG(WARNING) << "socket is EAGAIN or EWOULDBLOCK or EINTR";
-      return;
-    } else {
-      LOG(ERROR) << "socket send ERROR: " << errno;
-      on_socket_error();
-      return;
-    }
-  }
 
-  if (send_size == left_size) {
-    // 当前buf的所有数据发送完成 100%, rpc 移动到rpc_waiting_ 队列里.
-    Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*mutex_waiting_response_);
-    rpc_waiting_->insert(std::pair<uint64, AutoPocoRpcControllerPtr>(
-            rpc_sending_->id(),
-            rpc_sending_));
-    rpc_sending_.assign(NULL);
-    buf_sending_.reset(NULL);
-  } else {
-    // 没有发送完, 等待下次发送剩余数据. 更新done_size
-    buf_sending_->set_done_size(buf_sending_->get_done_size() + send_size);
+  try {
+    // buf_sending_ ready
+    void* pbuf = reinterpret_cast<void*> (buf_sending_->pbody() + buf_sending_->get_done_size());
+    int left_size = buf_sending_->get_size() - buf_sending_->get_done_size();
+    int send_size = socket_->sendBytes(pbuf, left_size);
+    if (send_size == -1) {
+      if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) {
+        LOG(WARNING) << "socket is EAGAIN or EWOULDBLOCK or EINTR";
+        return;
+      } else {
+        LOG(ERROR) << "socket send ERROR: " << errno;
+        on_socket_error();
+        return;
+      }
+    }
+
+    if (send_size == left_size) {
+      // 当前buf的所有数据发送完成 100%, rpc 移动到rpc_waiting_ 队列里.
+      Poco::ScopedLock<Poco::FastMutex> lock(*mutex_waiting_response_);
+      rpc_waiting_->insert(std::pair<uint64, AutoPocoRpcControllerPtr>(
+              rpc_sending_->id(),
+              rpc_sending_));
+      rpc_sending_.assign(NULL);
+      buf_sending_.reset(NULL);
+    } else {
+      // 没有发送完, 等待下次发送剩余数据. 更新done_size
+      buf_sending_->set_done_size(buf_sending_->get_done_size() + send_size);
+    }
+
+  } catch (Poco::Exception ex) {
+    LOG(ERROR) << ex.message();
+    on_socket_error();
+    return;
   }
 }
 
@@ -404,16 +428,20 @@ void PocoRpcChannel::process_response() {
     if (exit_) break;
     BytesBuffer* recved_buf = NULL;
     {
-      Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*mutex_recv_buf_array_);
+      Poco::ScopedLock<Poco::FastMutex> lock(*mutex_recv_buf_array_);
       recv_buf_array_->tryPopup(&recved_buf, 100);
     }
     if (recved_buf != NULL) {
       scoped_ptr<RpcMessage> rpc_msg(new RpcMessage());
-      CHECK(rpc_msg->ParseFromArray(recved_buf->pbody(),
-              recved_buf->get_size())) << "RpcMessage 反序列化出错";
+
+      if (not rpc_msg->ParseFromArray(recved_buf->pbody(),
+              recved_buf->get_size())) {
+        LOG(ERROR) << "RpcMessage 反序列化出错";
+        continue;
+      }
       AutoPocoRpcControllerPtr rpc_ctrl = NULL;
       {
-        Poco::ScopedLockWithUnlock<Poco::FastMutex> lock_rpc_waiting_(*mutex_waiting_response_);
+        Poco::ScopedLock<Poco::FastMutex> lock_rpc_waiting_(*mutex_waiting_response_);
         PocoRpcControllerMap::iterator it_rpc = rpc_waiting_->find(rpc_msg->id());
         if (it_rpc != rpc_waiting_->end()) {
           rpc_ctrl = it_rpc->second;
@@ -431,7 +459,7 @@ void PocoRpcChannel::process_response() {
     // 为了避免每次大循环的时候都去遍历一次rpc_waiting_ , 所以就检查recv_buf_array_
     // 是否为空. 为空意味着空闲, 就开始下面的回收处理
     if (recv_buf_array_->empty()) {
-      Poco::ScopedLockWithUnlock<Poco::FastMutex> lock_rpc_waiting_(*mutex_waiting_response_);
+      Poco::ScopedLock<Poco::FastMutex> lock_rpc_waiting_(*mutex_waiting_response_);
       PocoRpcControllerMap::iterator it_rpc = rpc_waiting_->begin();
       for (; it_rpc != rpc_waiting_->end(); ++it_rpc) {
         if (it_rpc->second->IsCanceled()) {
@@ -451,15 +479,15 @@ void PocoRpcChannel::process_response() {
  */
 void PocoRpcChannel::cancel_waiting_response_rpc(const std::string& reason) {
   scoped_ptr< std::vector<AutoPocoRpcControllerPtr> > tmp_rpc_list(
-            new std::vector<AutoPocoRpcControllerPtr>());
+          new std::vector<AutoPocoRpcControllerPtr>());
   {
-    Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*mutex_waiting_response_);
+    Poco::ScopedLock<Poco::FastMutex> lock(*mutex_waiting_response_);
     PocoRpcControllerMap::iterator it = rpc_waiting_->begin();
     for (; it != rpc_waiting_->end(); ++it) {
       tmp_rpc_list->push_back(it->second);
     }
   }
-            
+
   std::vector<AutoPocoRpcControllerPtr>::iterator it_tobe_canceled = tmp_rpc_list->begin();
   for (; it_tobe_canceled != tmp_rpc_list->end(); ++it_tobe_canceled) {
     AutoPocoRpcControllerPtr rpc_ctrl = *it_tobe_canceled;

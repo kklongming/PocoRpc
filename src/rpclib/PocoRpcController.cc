@@ -34,7 +34,7 @@ PocoRpcController::~PocoRpcController() {
 }
 
 void PocoRpcController::Reset() {
-  Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*status_mutex_);
+  Poco::ScopedLock<Poco::FastMutex> lock(*status_mutex_);
   successed_ = false;
   error_text_ = "Not called";
   is_canceled_ = false;
@@ -57,7 +57,7 @@ string PocoRpcController::ErrorText() const {
 }
 
 void PocoRpcController::StartCancel() {
-  Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*status_mutex_);
+  Poco::ScopedLock<Poco::FastMutex> lock(*status_mutex_);
   if (is_rpc_finished()) return;
 
   is_canceled_ = true;
@@ -106,7 +106,8 @@ BytesBuffer* PocoRpcController::NewBytesBuffer() {
   rpc_msg->set_id(id_);
   rpc_msg->set_method_full_name(method_desc_->full_name());
   rpc_msg->set_message_body(request_->SerializeAsString());
-
+  rpc_msg->set_client_uuid(poco_rpc_ch_->get_uuid());
+  
   BytesBuffer* rpc_buf = new BytesBuffer(rpc_msg->ByteSize());
   rpc_msg->SerializeToArray(reinterpret_cast<void*> (rpc_buf->pbody()),
           rpc_msg->ByteSize());
@@ -114,17 +115,17 @@ BytesBuffer* PocoRpcController::NewBytesBuffer() {
 }
 
 void PocoRpcController::wait() {
-  Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*rpc_condt_mutex_);
+  Poco::ScopedLock<Poco::FastMutex> lock(*rpc_condt_mutex_);
   rpc_condt_->wait(*rpc_condt_mutex_);
 }
 
 bool PocoRpcController::tryWait(long milliseconds) {
-  Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*rpc_condt_mutex_);
+  Poco::ScopedLock<Poco::FastMutex> lock(*rpc_condt_mutex_);
   return rpc_condt_->tryWait(*rpc_condt_mutex_, milliseconds);
 }
 
 void PocoRpcController::signal_rpc_over() {
-  Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*status_mutex_);
+  Poco::ScopedLock<Poco::FastMutex> lock(*status_mutex_);
   if (is_rpc_finished()) return;
   is_normal_done_ = true;
   rpc_condt_->broadcast();
@@ -163,12 +164,12 @@ string PocoRpcController::DebugString() {
 }
 
 void PocoRpcController::mark_canceled() {
-  Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*status_mutex_);
+  Poco::ScopedLock<Poco::FastMutex> lock(*status_mutex_);
   is_canceled_ = true;
 }
 
 uint64 PocoRpcController::genernate_rpc_id() {
-  Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(PocoRpcController::mutex_rpc_id_);
+  Poco::ScopedLock<Poco::FastMutex> lock(PocoRpcController::mutex_rpc_id_);
   PocoRpcController::last_rpc_id_++;
   return PocoRpcController::last_rpc_id_;
 }

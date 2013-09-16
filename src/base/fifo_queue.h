@@ -66,7 +66,7 @@ FifoQueue<T>::~FifoQueue() {
 
 template<typename T>
 void FifoQueue<T>::push(const T& value) {
-  Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*mutex_);
+  Poco::ScopedLock<Poco::FastMutex> lock(*mutex_);
   bool need_sign_for_ready = queue_->empty();
   queue_->push_front(value);
   if (need_sign_for_ready) {
@@ -76,7 +76,7 @@ void FifoQueue<T>::push(const T& value) {
 
 template<typename T>
 T FifoQueue<T>::popup() {
-  Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*mutex_);
+  Poco::ScopedLock<Poco::FastMutex> lock(*mutex_);
   bool need_wait_for_ready = queue_->empty();
   if (need_wait_for_ready) {
     condt_for_ready_->wait(*mutex_);
@@ -89,9 +89,9 @@ T FifoQueue<T>::popup() {
 
 template<typename T>
 bool FifoQueue<T>::tryPopup(T* pv, long milliseconds) {
-  Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*mutex_);
+  Poco::ScopedLock<Poco::FastMutex> lock(*mutex_);
   bool need_wait_for_ready = queue_->empty();
-  if (need_wait_for_ready) {
+  if (need_wait_for_ready && milliseconds > 0) {
     condt_for_ready_->tryWait(*mutex_, milliseconds);
   }
   if (queue_->empty()) {
@@ -134,7 +134,7 @@ void FifoQueue<T>::erase(typename FifoQueue<T>::iterator pos) {
 
 template<typename T>
 std::string FifoQueue<T>::DebugString() {
-  Poco::ScopedLockWithUnlock<Poco::FastMutex> lock(*mutex_);
+  Poco::ScopedLock<Poco::FastMutex> lock(*mutex_);
   return DebugStringWithoutLock();
 }
 
