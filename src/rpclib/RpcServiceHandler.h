@@ -10,6 +10,7 @@
 
 #include "base/base.h"
 #include "rpclib/BytesBuffer.h"
+#include "rpclib/RpcSession.h"
 
 #include <Poco/AutoPtr.h>
 #include <Poco/Net/StreamSocket.h>
@@ -57,6 +58,11 @@ class RpcServiceHandler {
   
   // 正在发送中的 buf
   scoped_ptr<BytesBuffer> sending_buf_;
+  
+  bool onWritable_ready_;
+  scoped_ptr<Poco::FastMutex> mutex_onWritable_ready_;
+  void reg_onWritable();
+  void unreg_onWritable();
 
   void reg_handler();
   void unreg_handler();
@@ -66,6 +72,9 @@ class RpcServiceHandler {
   void onWritable(const Poco::AutoPtr<Poco::Net::WritableNotification>& pNf);
   void onShutdown(const Poco::AutoPtr<Poco::Net::ShutdownNotification>& pNf);
   void onError(const Poco::AutoPtr<Poco::Net::ErrorNotification>& pNf);
+  
+  void on_pushed_cb(RpcSession::RpcMsgQueue* queue);
+  void on_popuped_cb(RpcSession::RpcMsgQueue* queue);
 
   DISALLOW_COPY_AND_ASSIGN(RpcServiceHandler);
 };

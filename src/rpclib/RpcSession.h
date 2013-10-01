@@ -20,6 +20,8 @@ typedef std::tr1::shared_ptr<RpcMessage> RpcMessagePtr;
 
 class RpcSession {
  public:
+  friend class RpcServiceHandler;
+  
   RpcSession(const std::string& uuid, int timeout_in_ms);
   virtual ~RpcSession();
 
@@ -30,8 +32,14 @@ class RpcSession {
   bool tryPopup(RpcMessagePtr* p_rpcmsg, int timeout);
   void ReleaseSendingRpcmsg();
   
- private:
+  void reg_on_pushed_cb(Poco::Runnable* cb);
+  void clear_on_pushed_cb();
+  void reg_on_popuped_cb(Poco::Runnable* cb);
+  void clear_on_popuped_cb();
+  
   typedef FifoQueue<RpcMessagePtr> RpcMsgQueue;
+  
+ private:
   
   std::string client_uuid_;
   

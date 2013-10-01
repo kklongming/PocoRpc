@@ -29,6 +29,8 @@ void StartClient() {
   PingReply reply;
 
   bservice->Ping(ping_ctr.get(), &req, &reply, NULL);
+  
+  Poco::Thread::sleep(1000*15);
 
   AutoPocoRpcControllerPtr get_svc_list_ctr2 = ch->NewRpcController();
 
@@ -37,7 +39,7 @@ void StartClient() {
 
   bservice->GetServiceList(get_svc_list_ctr2.get(), &get_service_rep, &get_service_reply, NULL);
 
-  Poco::Thread::sleep(1000*10);
+  
 
   get_svc_list_ctr2->wait();
   DebugString(&get_service_reply);

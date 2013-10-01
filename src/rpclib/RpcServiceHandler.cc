@@ -5,19 +5,24 @@
  * Created on 2013年8月29日, 下午3:23
  */
 
+#include "base/runable.h"
 #include "rpclib/RpcServiceHandler.h"
 #include "rpclib/PocoRpcServer.h"
 #include "rpc_proto/poco_rpc.pb.h"
 #include <Poco/Net/SocketReactor.h>
 #include <Poco/Net/SocketNotification.h>
 #include <Poco/NObserver.h>
+#include <Poco/Mutex.h>
+#include <Poco/ScopedLock.h>
 
 namespace PocoRpc {
 
 RpcServiceHandler::RpcServiceHandler(Poco::Net::StreamSocket& socket,
         Poco::Net::SocketReactor& reactor) : rpc_server_(NULL),
 socket_(socket), client_uuid_(""),
-reactor_(reactor), recving_buf_(NULL), sending_buf_(NULL) {
+reactor_(reactor), recving_buf_(NULL), sending_buf_(NULL),
+onWritable_ready_(false) {
+  mutex_onWritable_ready_.reset(new Poco::FastMutex());
   reg_handler();
   CHECK(false) << "Should not call this constuctor.";
 }
@@ -26,16 +31,45 @@ RpcServiceHandler::RpcServiceHandler(PocoRpcServer *rpc_server,
         Poco::Net::StreamSocket& socket,
         Poco::Net::SocketReactor& reactor) : rpc_server_(rpc_server),
 socket_(socket), client_uuid_(""),
-reactor_(reactor), recving_buf_(NULL), sending_buf_(NULL) {
+reactor_(reactor), recving_buf_(NULL), sending_buf_(NULL),
+onWritable_ready_(false) {
+  mutex_onWritable_ready_.reset(new Poco::FastMutex());
   reg_handler();
   LOG(INFO) << "Create RpcServiceHandler::RpcServiceHandler";
 }
 
 RpcServiceHandler::~RpcServiceHandler() {
+  if (not client_uuid_.empty()) {
+    RpcSessionPtr session = rpc_server_->SessionManager()->FindOrCreate(client_uuid_);
+    session->clear_on_popuped_cb();
+    session->clear_on_pushed_cb();
+  }
   unreg_handler();
   LOG(INFO) << "unreg_handler();";
   socket_.close();
   LOG(INFO) << "Destory RpcServiceHandler::RpcServiceHandler";
+}
+
+void RpcServiceHandler::reg_onWritable() {
+  Poco::ScopedLock<Poco::FastMutex> lock(*mutex_onWritable_ready_);
+  if (onWritable_ready_) {
+    return;
+  }
+  reactor_.addEventHandler(socket_,
+          Poco::NObserver<RpcServiceHandler, Poco::Net::WritableNotification>(*this,
+          &RpcServiceHandler::onWritable));
+  onWritable_ready_ = true;
+}
+
+void RpcServiceHandler::unreg_onWritable() {
+  Poco::ScopedLock<Poco::FastMutex> lock(*mutex_onWritable_ready_);
+  if (not onWritable_ready_) {
+    return;
+  }
+  reactor_.removeEventHandler(socket_,
+          Poco::NObserver<RpcServiceHandler, Poco::Net::WritableNotification>(*this,
+          &RpcServiceHandler::onWritable));
+  onWritable_ready_ = false;
 }
 
 void RpcServiceHandler::reg_handler() {
@@ -43,14 +77,12 @@ void RpcServiceHandler::reg_handler() {
           Poco::NObserver<RpcServiceHandler, Poco::Net::ReadableNotification>(*this,
           &RpcServiceHandler::onReadable));
   reactor_.addEventHandler(socket_,
-          Poco::NObserver<RpcServiceHandler, Poco::Net::WritableNotification>(*this,
-          &RpcServiceHandler::onWritable));
-  reactor_.addEventHandler(socket_,
           Poco::NObserver<RpcServiceHandler, Poco::Net::ShutdownNotification>(*this,
           &RpcServiceHandler::onShutdown));
   reactor_.addEventHandler(socket_,
           Poco::NObserver<RpcServiceHandler, Poco::Net::ErrorNotification>(*this,
           &RpcServiceHandler::onError));
+  reg_onWritable();
 }
 
 void RpcServiceHandler::unreg_handler() {
@@ -58,14 +90,12 @@ void RpcServiceHandler::unreg_handler() {
           Poco::NObserver<RpcServiceHandler, Poco::Net::ReadableNotification>(*this,
           &RpcServiceHandler::onReadable));
   reactor_.removeEventHandler(socket_,
-          Poco::NObserver<RpcServiceHandler, Poco::Net::WritableNotification>(*this,
-          &RpcServiceHandler::onWritable));
-  reactor_.removeEventHandler(socket_,
           Poco::NObserver<RpcServiceHandler, Poco::Net::ShutdownNotification>(*this,
           &RpcServiceHandler::onShutdown));
   reactor_.removeEventHandler(socket_,
           Poco::NObserver<RpcServiceHandler, Poco::Net::ErrorNotification>(*this,
           &RpcServiceHandler::onError));
+  unreg_onWritable();
 }
 
 void RpcServiceHandler::onSocketError() {
@@ -74,7 +104,7 @@ void RpcServiceHandler::onSocketError() {
 }
 
 void RpcServiceHandler::onReadable(const Poco::AutoPtr<Poco::Net::ReadableNotification>& pNf) {
-  LOG(INFO) << "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ socket is readable";
+  LOG(INFO) << "socket is readable";
   if (socket_.available() == 0) {
     LOG(INFO) << "socket is readable status, but it's available data length == 0, so close this socket.";
     onSocketError();
@@ -165,9 +195,24 @@ void RpcServiceHandler::onReadable(const Poco::AutoPtr<Poco::Net::ReadableNotifi
         onSocketError();
         return;
       }
+
       // 正常情况, 接收100% 并且反序列化成功
-      client_uuid_ = rpc_msg->client_uuid();
-      RpcSessionPtr session = rpc_server_->SessionManager()->FindOrCreate(rpc_msg->client_uuid());
+      if (client_uuid_.empty()) {
+        // RpcServiceHandler 创建后, socket 接收到的第一个Rpc请求, 根据这个rpc
+        // 请求设置client_uuid_, 并注册on_pushed_cb, on_popuped_cb
+        client_uuid_ = rpc_msg->client_uuid();
+        RpcSessionPtr session = rpc_server_->SessionManager()->FindOrCreate(client_uuid_);
+        Poco::Runnable* on_pushed_call = Poco::NewPermanentCallback(this,
+                &RpcServiceHandler::on_pushed_cb, session->pending_response_.get());
+        Poco::Runnable* on_popuped_call = Poco::NewPermanentCallback(this,
+                &RpcServiceHandler::on_popuped_cb, session->pending_response_.get());
+        session->clear_on_pushed_cb();
+        session->clear_on_popuped_cb();
+        session->reg_on_pushed_cb(on_pushed_call);
+        session->reg_on_popuped_cb(on_popuped_call);
+        LOG(INFO) << "==>" << "get client_uuid_=" << client_uuid_;
+      }
+      CHECK(client_uuid_ == rpc_msg->client_uuid());
       RpcMessagePtr rpc_msg_ptr(rpc_msg.release());
       // push rpcmsg to rpcserver 
       rpc_server_->push_rpcmsg(rpc_msg_ptr);
@@ -184,8 +229,9 @@ void RpcServiceHandler::onReadable(const Poco::AutoPtr<Poco::Net::ReadableNotifi
 }
 
 void RpcServiceHandler::onWritable(const Poco::AutoPtr<Poco::Net::WritableNotification>& pNf) {
-//  LOG(INFO) << "socket is writeable";
+  LOG(INFO) << "socket is writeable";
   if (client_uuid_.empty()) {
+    LOG(INFO) << "HAS NOT client_uuid, just return";
     return;
   }
   /// 根据uuid找到或者新建一个Session
@@ -242,6 +288,20 @@ void RpcServiceHandler::onShutdown(const Poco::AutoPtr<Poco::Net::ShutdownNotifi
 void RpcServiceHandler::onError(const Poco::AutoPtr<Poco::Net::ErrorNotification>& pNf) {
   LOG(INFO) << "callback onError()";
   onSocketError();
+}
+
+void RpcServiceHandler::on_pushed_cb(RpcSession::RpcMsgQueue* queue) {
+  if (queue->size() == 1) {
+    reg_onWritable();
+    LOG(INFO) << "regist socket on_writeable";
+  }
+}
+
+void RpcServiceHandler::on_popuped_cb(RpcSession::RpcMsgQueue* queue) {
+  if (queue->size() == 0) {
+    unreg_onWritable();
+    LOG(INFO) << "UNREGIST socket on_writeable";
+  }
 }
 
 } // namespace PocoRpc

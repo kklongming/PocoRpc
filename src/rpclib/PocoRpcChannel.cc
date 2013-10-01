@@ -8,6 +8,8 @@
 #include "rpclib/PocoRpcController.h"
 #include "rpclib/PocoRpcChannel.h"
 #include "rpclib/BytesBuffer.h"
+#include "rpclib/PocoRpcError.h"
+#include "rpc_def/base_service.pb.h"
 #include "rpc_proto/poco_rpc.pb.h"
 #include "base/runable.h"
 #include "base/base.h"
@@ -35,6 +37,8 @@ DEFINE_int32(socket_send_buf_size, 0, "socket send buffer size in Bytes. \
 DEFINE_int32(socket_recv_buf_size, 0, "socket recv buffer size in Bytes. \
 0: using system default value.");
 DEFINE_int32(reconnect_interval, 200, "socket reconnect interval time in millisecond.");
+
+DEFINE_int32(ping_time_out, 2000, "Ping timeout in millisecond");
 
 namespace PocoRpc {
 
@@ -122,6 +126,21 @@ bool PocoRpcChannel::Connect() {
   // successed cennected with rpc server
   connected_ = true;
   reg_reactor_handler(socket_.get());
+  scoped_ptr<BaseService_Stub> bservice(new BaseService_Stub(this));
+  AutoPocoRpcControllerPtr ping_ctr = NewRpcController();
+  PingReq req;
+  PingReply reply;
+
+  bservice->Ping(ping_ctr.get(), &req, &reply, NULL);
+  ping_ctr->tryWait(FLAGS_ping_time_out);
+  if (reply.status() != E_OK) {
+    LOG(ERROR) << "Faild to connect rpc server: " << address_->toString() <<
+            ". Ping server faild.";
+    socket_->close();
+    socket_.reset(NULL);
+    connected_ = false;
+    return false;
+  }
   return true;
 }
 
