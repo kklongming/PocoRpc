@@ -109,6 +109,7 @@ BytesBuffer* PocoRpcController::NewBytesBuffer() {
   rpc_msg->set_client_uuid(poco_rpc_ch_->get_uuid());
   
   BytesBuffer* rpc_buf = new BytesBuffer(rpc_msg->ByteSize());
+  LOG(INFO) << "Request BytesBuffer size=" << rpc_buf->get_body_size();
   rpc_msg->SerializeToArray(reinterpret_cast<void*> (rpc_buf->pbody()),
           rpc_msg->ByteSize());
   return rpc_buf;
@@ -116,11 +117,13 @@ BytesBuffer* PocoRpcController::NewBytesBuffer() {
 
 void PocoRpcController::wait() {
   Poco::ScopedLock<Poco::FastMutex> lock(*rpc_condt_mutex_);
+  if (is_rpc_finished()) return;
   rpc_condt_->wait(*rpc_condt_mutex_);
 }
 
 bool PocoRpcController::tryWait(long milliseconds) {
   Poco::ScopedLock<Poco::FastMutex> lock(*rpc_condt_mutex_);
+  if (is_rpc_finished()) return true;
   return rpc_condt_->tryWait(*rpc_condt_mutex_, milliseconds);
 }
 

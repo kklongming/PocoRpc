@@ -28,11 +28,14 @@ RpcServiceHandler::RpcServiceHandler(PocoRpcServer *rpc_server,
 socket_(socket), client_uuid_(""),
 reactor_(reactor), recving_buf_(NULL), sending_buf_(NULL) {
   reg_handler();
+  LOG(INFO) << "Create RpcServiceHandler::RpcServiceHandler";
 }
 
 RpcServiceHandler::~RpcServiceHandler() {
   unreg_handler();
-  socket_.shutdown();
+  LOG(INFO) << "unreg_handler();";
+  socket_.close();
+  LOG(INFO) << "Destory RpcServiceHandler::RpcServiceHandler";
 }
 
 void RpcServiceHandler::reg_handler() {
@@ -66,10 +69,17 @@ void RpcServiceHandler::unreg_handler() {
 }
 
 void RpcServiceHandler::onSocketError() {
+  LOG(ERROR) << "********** onSocketError **********";
   delete this;
 }
 
 void RpcServiceHandler::onReadable(const Poco::AutoPtr<Poco::Net::ReadableNotification>& pNf) {
+  LOG(INFO) << "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ socket is readable";
+  if (socket_.available() == 0) {
+    LOG(INFO) << "socket is readable status, but it's available data length == 0, so close this socket.";
+    onSocketError();
+    return;
+  }
   // 开始接收rpc request
   if (recving_buf_.get() == NULL) {
     try {
@@ -80,7 +90,7 @@ void RpcServiceHandler::onReadable(const Poco::AutoPtr<Poco::Net::ReadableNotifi
       }
 
       // 到这里, 肯定是大于 4 Bytes, 先读4个Bytes 得到body的size
-      uint32 buf;
+      char buf[4] = {0, 0, 0, 0};
       int recv_size = socket_.receiveBytes(reinterpret_cast<void*> (&buf), 4);
       // 这里需要检查一下返回值, 判断recv的过程中是否出错
       if (recv_size == -1) {
@@ -96,17 +106,21 @@ void RpcServiceHandler::onReadable(const Poco::AutoPtr<Poco::Net::ReadableNotifi
 
       if (recv_size == 0) {
         // 0 means socket was shutdown by client side.
+        LOG(ERROR) << "socket recv == 0 ";
         onSocketError();
         return;
       }
 
       if (recv_size != 4) {
+        LOG(ERROR) << "recv_size != 4";
         onSocketError();
         return;
       }
-      uint32 buf_size = ntohl(buf);
-      recving_buf_.reset(new BytesBuffer(buf_size));
 
+      uint32* puint32 = (uint32*) buf;
+      uint32 buf_size = ntohl(*puint32);
+      recving_buf_.reset(new BytesBuffer(buf_size));
+      recving_buf_->set_done_size(4);
     } catch (Poco::Exception ex) {
       LOG(ERROR) << ex.message();
       onSocketError();
@@ -117,8 +131,8 @@ void RpcServiceHandler::onReadable(const Poco::AutoPtr<Poco::Net::ReadableNotifi
   // 已经正确读出body的size了, 并且创建了 recving_buf_
   try {
     uint32 recv_size = socket_.receiveBytes(
-            reinterpret_cast<void*> (recving_buf_->pbody() + recving_buf_->get_done_size()),
-            (recving_buf_->get_size() - recving_buf_->get_done_size())
+            reinterpret_cast<void*> (recving_buf_->phead() + recving_buf_->get_done_size()),
+            (recving_buf_->get_total_size() - recving_buf_->get_done_size())
             );
     // 这里需要检查一下返回值, 判断recv的过程中是否出错
     if (recv_size == -1) {
@@ -134,16 +148,17 @@ void RpcServiceHandler::onReadable(const Poco::AutoPtr<Poco::Net::ReadableNotifi
 
     if (recv_size == 0) {
       // 0 means socket was shutdown by client side.
+      LOG(ERROR) << "try read " << (recving_buf_->get_total_size() - recving_buf_->get_done_size()) << " bytes and socket recv == 0 ";
       onSocketError();
       return;
     }
 
     recving_buf_->set_done_size(recving_buf_->get_done_size() + recv_size);
-    if (recving_buf_->get_done_size() == recving_buf_->get_size()) {
+    if (recving_buf_->get_done_size() == recving_buf_->get_total_size()) {
       // buf 接收 100%
       scoped_ptr<RpcMessage> rpc_msg(new RpcMessage());
       if (not rpc_msg->ParseFromArray(recving_buf_->pbody(),
-              recving_buf_->get_size())) {
+              recving_buf_->get_body_size())) {
         // 反序列化出错的原因, 可能是非法客户端发送错误的数据过来
         // socket 通讯出了问题. 不管是那一种, 我们都采取关闭socket的处理方法
         LOG(ERROR) << "RpcMessage 反序列化出错";
@@ -156,6 +171,8 @@ void RpcServiceHandler::onReadable(const Poco::AutoPtr<Poco::Net::ReadableNotifi
       RpcMessagePtr rpc_msg_ptr(rpc_msg.release());
       // push rpcmsg to rpcserver 
       rpc_server_->push_rpcmsg(rpc_msg_ptr);
+
+      recving_buf_.release();
     }
 
   } catch (Poco::Exception ex) {
@@ -167,12 +184,13 @@ void RpcServiceHandler::onReadable(const Poco::AutoPtr<Poco::Net::ReadableNotifi
 }
 
 void RpcServiceHandler::onWritable(const Poco::AutoPtr<Poco::Net::WritableNotification>& pNf) {
+//  LOG(INFO) << "socket is writeable";
   if (client_uuid_.empty()) {
     return;
   }
   /// 根据uuid找到或者新建一个Session
   RpcSessionPtr session = rpc_server_->SessionManager()->FindOrCreate(client_uuid_);
-  
+
   if (sending_buf_.get() == NULL) {
     /// 没有正在发送的buf, 则从session里pending_response_ 队列里取一个RpcMessagePtr
     RpcMessagePtr p_rpcmsg;
@@ -183,12 +201,14 @@ void RpcServiceHandler::onWritable(const Poco::AutoPtr<Poco::Net::WritableNotifi
     }
     // 得到一个需要发送的Response RpcMsg, 根据其创建一个Buffer对象用于发送
     sending_buf_.reset(new BytesBuffer(p_rpcmsg->ByteSize()));
+    p_rpcmsg->SerializePartialToArray(reinterpret_cast<void*> (sending_buf_->pbody()),
+            sending_buf_->get_body_size());
   }
   CHECK(sending_buf_.get() != NULL);
 
   try {
-    void* pbuf = reinterpret_cast<void*> (sending_buf_->pbody() + sending_buf_->get_done_size());
-    int send_size = socket_.sendBytes(pbuf, sending_buf_->get_size() - sending_buf_->get_done_size());
+    void* pbuf = reinterpret_cast<void*> (sending_buf_->phead() + sending_buf_->get_done_size());
+    int send_size = socket_.sendBytes(pbuf, sending_buf_->get_total_size() - sending_buf_->get_done_size());
     if (send_size == -1) {
       if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) {
         LOG(WARNING) << "socket is EAGAIN or EWOULDBLOCK or EINTR";
@@ -201,12 +221,12 @@ void RpcServiceHandler::onWritable(const Poco::AutoPtr<Poco::Net::WritableNotifi
     }
 
     sending_buf_->set_done_size(sending_buf_->get_done_size() + send_size);
-    if (sending_buf_->get_done_size() == sending_buf_->get_size()) {
+    if (sending_buf_->get_done_size() == sending_buf_->get_total_size()) {
       /// 发送完成 100%
       sending_buf_.release();
       session->ReleaseSendingRpcmsg();
     }
-    
+
   } catch (Poco::Exception ex) {
     LOG(ERROR) << ex.message();
     onSocketError();
@@ -215,10 +235,12 @@ void RpcServiceHandler::onWritable(const Poco::AutoPtr<Poco::Net::WritableNotifi
 }
 
 void RpcServiceHandler::onShutdown(const Poco::AutoPtr<Poco::Net::ShutdownNotification>& pNf) {
+  LOG(INFO) << "callback onShutdown()";
   delete this;
 }
 
 void RpcServiceHandler::onError(const Poco::AutoPtr<Poco::Net::ErrorNotification>& pNf) {
+  LOG(INFO) << "callback onError()";
   onSocketError();
 }
 

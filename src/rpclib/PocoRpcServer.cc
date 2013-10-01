@@ -6,6 +6,7 @@
  */
 
 #include "rpclib/PocoRpcServer.h"
+#include "rpclib/BaseService_Impl.h"
 #include "base/runable.h"
 #include "base/daemon.h"
 #include "rpc_def/base_service.pb.h"
@@ -17,7 +18,7 @@
 
 DEFINE_int32(rpc_session_timeout, 1800000, "rpc session timeout in milliseconds");
 DEFINE_int32(rpc_check_interval, 300000, "rpc session timeout check interval in milliseconds");
-DEFINE_int32(rpc_worker_count_, 4, "rpc worker count");
+DEFINE_int32(rpc_worker_count_, 1, "rpc worker count");
 
 namespace PocoRpc {
 
@@ -30,9 +31,8 @@ PocoRpcServer::PocoRpcServer(uint32 server_port) : exited_(false), acceptor_(NUL
   session_mgr_.reset(new RpcSessionManager(FLAGS_rpc_session_timeout,
           FLAGS_rpc_check_interval));
   
-  // todo add base service
-//  ::google::protobuf::Service* base_svc = new BaseService_Impl();
-//  reg_service(base_svc);
+  ::google::protobuf::Service* base_svc = new BaseService_Impl(this);
+  reg_service(base_svc);
 }
 
 PocoRpcServer::~PocoRpcServer() {

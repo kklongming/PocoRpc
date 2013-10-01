@@ -122,14 +122,14 @@ class RpcMessage : public ::google::protobuf::Message {
   inline ::std::string* release_method_full_name();
   inline void set_allocated_method_full_name(::std::string* method_full_name);
 
-  // required string message_body = 4;
+  // required bytes message_body = 4;
   inline bool has_message_body() const;
   inline void clear_message_body();
   static const int kMessageBodyFieldNumber = 4;
   inline const ::std::string& message_body() const;
   inline void set_message_body(const ::std::string& value);
   inline void set_message_body(const char* value);
-  inline void set_message_body(const char* value, size_t size);
+  inline void set_message_body(const void* value, size_t size);
   inline ::std::string* mutable_message_body();
   inline ::std::string* release_message_body();
   inline void set_allocated_message_body(::std::string* message_body);
@@ -331,7 +331,7 @@ inline void RpcMessage::set_allocated_method_full_name(::std::string* method_ful
   }
 }
 
-// required string message_body = 4;
+// required bytes message_body = 4;
 inline bool RpcMessage::has_message_body() const {
   return (_has_bits_[0] & 0x00000008u) != 0;
 }
@@ -364,7 +364,7 @@ inline void RpcMessage::set_message_body(const char* value) {
   }
   message_body_->assign(value);
 }
-inline void RpcMessage::set_message_body(const char* value, size_t size) {
+inline void RpcMessage::set_message_body(const void* value, size_t size) {
   set_has_message_body();
   if (message_body_ == &::google::protobuf::internal::kEmptyString) {
     message_body_ = new ::std::string;

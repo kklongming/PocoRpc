@@ -28,8 +28,12 @@ char* BytesBuffer::pbody() {
   return buf_.get() + 4;
 }
 
-uint32 BytesBuffer::get_size() {
+uint32 BytesBuffer::get_body_size() {
   return body_size_;
+}
+
+uint32 BytesBuffer::get_total_size() {
+  return body_size_ + 4;
 }
 
 void BytesBuffer::set_done_size(uint32 size) {
@@ -38,6 +42,19 @@ void BytesBuffer::set_done_size(uint32 size) {
 
 uint32 BytesBuffer::get_done_size() {
   return done_size_;
+}
+
+std::string BytesBuffer::DebugString() {
+  std::stringstream ss;
+  ss << "{" << std::endl;
+  ss << "body_size : " << body_size_ << std::endl;
+  for (int i=0; i<body_size_; ++i) {
+    uint8* puint8 = (uint8*)(pbody()+i);
+    uint32 x = *puint8;
+    ss << x << " ";
+  }
+  ss << std::endl << "}" << std::endl;
+  return ss.str();
 }
 
 } // namespace

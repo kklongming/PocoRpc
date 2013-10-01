@@ -5,6 +5,6 @@ message RpcMessage {
     required uint64 id = 1;
     required string client_uuid = 2;
     required string method_full_name = 3;
-    required string message_body = 4;
+    required bytes message_body = 4;
 }
 

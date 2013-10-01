@@ -41,9 +41,12 @@ namespace Net {
 namespace PocoRpc {
 
 class RpcMessage;
+class BaseService_Impl;
 
 class PocoRpcServer {
  public:
+  friend class BaseService_Impl;
+  
   explicit PocoRpcServer(uint32 server_port);
   virtual ~PocoRpcServer();
 

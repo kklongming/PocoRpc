@@ -83,7 +83,7 @@ void protobuf_AddDesc_poco_5frpc_2eproto() {
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
     "\n\016poco_rpc.proto\022\007PocoRpc\"]\n\nRpcMessage\022"
     "\n\n\002id\030\001 \002(\004\022\023\n\013client_uuid\030\002 \002(\t\022\030\n\020meth"
-    "od_full_name\030\003 \002(\t\022\024\n\014message_body\030\004 \002(\t", 120);
+    "od_full_name\030\003 \002(\t\022\024\n\014message_body\030\004 \002(\014", 120);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "poco_rpc.proto", &protobuf_RegisterTypes);
   RpcMessage::default_instance_ = new RpcMessage();
@@ -247,16 +247,13 @@ bool RpcMessage::MergePartialFromCodedStream(
         break;
       }
 
-      // required string message_body = 4;
+      // required bytes message_body = 4;
       case 4: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_message_body:
-          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+          DO_(::google::protobuf::internal::WireFormatLite::ReadBytes(
                 input, this->mutable_message_body()));
-          ::google::protobuf::internal::WireFormat::VerifyUTF8String(
-            this->message_body().data(), this->message_body().length(),
-            ::google::protobuf::internal::WireFormat::PARSE);
         } else {
           goto handle_uninterpreted;
         }
@@ -305,12 +302,9 @@ void RpcMessage::SerializeWithCachedSizes(
       3, this->method_full_name(), output);
   }
 
-  // required string message_body = 4;
+  // required bytes message_body = 4;
   if (has_message_body()) {
-    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
-      this->message_body().data(), this->message_body().length(),
-      ::google::protobuf::internal::WireFormat::SERIALIZE);
-    ::google::protobuf::internal::WireFormatLite::WriteString(
+    ::google::protobuf::internal::WireFormatLite::WriteBytes(
       4, this->message_body(), output);
   }
 
@@ -347,13 +341,10 @@ void RpcMessage::SerializeWithCachedSizes(
         3, this->method_full_name(), target);
   }
 
-  // required string message_body = 4;
+  // required bytes message_body = 4;
   if (has_message_body()) {
-    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
-      this->message_body().data(), this->message_body().length(),
-      ::google::protobuf::internal::WireFormat::SERIALIZE);
     target =
-      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+      ::google::protobuf::internal::WireFormatLite::WriteBytesToArray(
         4, this->message_body(), target);
   }
 
@@ -389,10 +380,10 @@ int RpcMessage::ByteSize() const {
           this->method_full_name());
     }
 
-    // required string message_body = 4;
+    // required bytes message_body = 4;
     if (has_message_body()) {
       total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::StringSize(
+        ::google::protobuf::internal::WireFormatLite::BytesSize(
           this->message_body());
     }
 

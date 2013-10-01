@@ -20,9 +20,12 @@ class BytesBuffer {
   char* phead();
   char* pbody();
   
-  uint32 get_size();
+  uint32 get_body_size();
+  uint32 get_total_size();
   void set_done_size(uint32 size);
   uint32 get_done_size();
+  
+  std::string DebugString();
   
  private:
   bool finished_;
