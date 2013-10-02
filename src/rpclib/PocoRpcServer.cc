@@ -7,6 +7,7 @@
 
 #include "rpclib/PocoRpcServer.h"
 #include "rpclib/BaseService_Impl.h"
+#include "rpclib/PocoRpcSocketReactor.h"
 #include "base/runable.h"
 #include "base/daemon.h"
 #include "rpc_def/base_service.pb.h"
@@ -14,7 +15,7 @@
 #include <google/protobuf/service.h>
 #include <google/protobuf/descriptor.h>
 #include <google/protobuf/message.h>
-
+#include <Poco/Net/SocketAddress.h>
 
 DEFINE_int32(rpc_session_timeout, 1800000, "rpc session timeout in milliseconds");
 DEFINE_int32(rpc_check_interval, 300000, "rpc session timeout check interval in milliseconds");
@@ -25,7 +26,7 @@ namespace PocoRpc {
 PocoRpcServer::PocoRpcServer(uint32 server_port) : exited_(false), acceptor_(NULL) {
   service_map_.reset(new ServiceMap());
   server_sock_.reset(new Poco::Net::ServerSocket((unsigned short)server_port));
-  reactor_.reset(new Poco::Net::SocketReactor());
+  reactor_.reset(new PocoRpcSocketReactor());
   reactor_worker_.reset(new Poco::Thread());
   rpc_processor_.reset(new TaskQueue(FLAGS_rpc_worker_count_));
   session_mgr_.reset(new RpcSessionManager(FLAGS_rpc_session_timeout,

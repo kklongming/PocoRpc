@@ -83,6 +83,7 @@ void RpcServiceHandler::reg_handler() {
           Poco::NObserver<RpcServiceHandler, Poco::Net::ErrorNotification>(*this,
           &RpcServiceHandler::onError));
   reg_onWritable();
+  LOG(INFO) << "RpcServiceHandler::reg_handler";
 }
 
 void RpcServiceHandler::unreg_handler() {
@@ -104,7 +105,7 @@ void RpcServiceHandler::onSocketError() {
 }
 
 void RpcServiceHandler::onReadable(const Poco::AutoPtr<Poco::Net::ReadableNotification>& pNf) {
-  LOG(INFO) << "socket is readable";
+//  LOG(INFO) << "socket is readable";
   if (socket_.available() == 0) {
     LOG(INFO) << "socket is readable status, but it's available data length == 0, so close this socket.";
     onSocketError();
@@ -229,9 +230,8 @@ void RpcServiceHandler::onReadable(const Poco::AutoPtr<Poco::Net::ReadableNotifi
 }
 
 void RpcServiceHandler::onWritable(const Poco::AutoPtr<Poco::Net::WritableNotification>& pNf) {
-  LOG(INFO) << "socket is writeable";
+//  LOG(INFO) << "socket is writeable";
   if (client_uuid_.empty()) {
-    LOG(INFO) << "HAS NOT client_uuid, just return";
     return;
   }
   /// 根据uuid找到或者新建一个Session

@@ -19,8 +19,7 @@ void DebugString(::google::protobuf::Message* msg) {
 
 void StartClient() {
   scoped_ptr<PocoRpcChannel> ch(new PocoRpcChannel("localhost", 9999));
-  ch->init();
-  CHECK(ch->Connect()) << "Faild to connect with rpc server.";
+  CHECK(ch->init()) << "Faild to connect with rpc server." << ch->DebugString();
 
   scoped_ptr<BaseService_Stub> bservice(new BaseService_Stub(ch.get()));
 
@@ -29,9 +28,9 @@ void StartClient() {
   PingReply reply;
 
   bservice->Ping(ping_ctr.get(), &req, &reply, NULL);
-  
-  Poco::Thread::sleep(1000*15);
 
+  Poco::Thread::sleep(1000*15);
+  
   AutoPocoRpcControllerPtr get_svc_list_ctr2 = ch->NewRpcController();
 
   GetServiceListReq get_service_rep;
@@ -40,13 +39,12 @@ void StartClient() {
   bservice->GetServiceList(get_svc_list_ctr2.get(), &get_service_rep, &get_service_reply, NULL);
 
   
-
   get_svc_list_ctr2->wait();
   DebugString(&get_service_reply);
   
   ping_ctr->wait();
   DebugString(&reply);
-
+  Poco::Thread::sleep(1000*60);
 }
 
 int main(int argc, char* argv[]) {
@@ -57,6 +55,7 @@ int main(int argc, char* argv[]) {
 
   LOG(INFO) << "==> Start Rpc Client...";
   StartClient();
+//  StartClient();
   LOG(INFO) << "==> Exit Rpc Client...";
 
   return 0;

@@ -47,7 +47,7 @@ class PocoRpcChannel : public google::protobuf::RpcChannel {
   PocoRpcChannel(const std::string& host, uint16 port);
   virtual ~PocoRpcChannel();
   
-  void init();
+  bool init();
 
   virtual void CallMethod(const google::protobuf::MethodDescriptor* method,
           google::protobuf::RpcController* controller,
@@ -55,7 +55,7 @@ class PocoRpcChannel : public google::protobuf::RpcChannel {
           google::protobuf::Message* response,
           google::protobuf::Closure* done);
 
-  bool Connect();
+  
   void Exit();
   void set_auto_reconnect(bool auto_reconnect);
   uint32 get_re_connect_times();
@@ -117,9 +117,20 @@ class PocoRpcChannel : public google::protobuf::RpcChannel {
   scoped_ptr<Poco::Net::StreamSocket> socket_;
 
   scoped_ptr<google::protobuf::Closure> on_reconnect_faild_cb_;
+  
+  scoped_ptr<Poco::Thread> reconnect_worker_;
+  scoped_ptr<Poco::Condition> reconnect_cont_;
+  scoped_ptr<Poco::FastMutex> mutex_reconnect_cont_;
+  scoped_ptr<Poco::Runnable> reconnect_func_;
+  
+  bool onWritable_ready_;
+  scoped_ptr<Poco::FastMutex> mutex_onWritable_ready_;
 
+  bool Connect();
   void RemoveCanceledRpc(uint64 rpc_id);
   Poco::Net::StreamSocket* CreateSocket();
+  void reg_on_writeable(Poco::Net::StreamSocket* sock);
+  void unreg_on_writeable(Poco::Net::StreamSocket* sock);
   void reg_reactor_handler(Poco::Net::StreamSocket* sock);
   void unreg_reactor_handler(Poco::Net::StreamSocket* sock);
   void onReadable(const Poco::AutoPtr<Poco::Net::ReadableNotification>& pNf);
@@ -131,6 +142,9 @@ class PocoRpcChannel : public google::protobuf::RpcChannel {
   
   void on_socket_error();
   void auto_reconnect();
+  
+  void on_pushed_rpc();
+  void on_popup_rpc();
   
   DISALLOW_COPY_AND_ASSIGN(PocoRpcChannel);
 };
