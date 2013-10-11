@@ -124,7 +124,11 @@ void PocoRpcController::wait() {
 bool PocoRpcController::tryWait(long milliseconds) {
   Poco::ScopedLock<Poco::FastMutex> lock(*rpc_condt_mutex_);
   if (is_rpc_finished()) return true;
-  return rpc_condt_->tryWait(*rpc_condt_mutex_, milliseconds);
+  bool ret = rpc_condt_->tryWait(*rpc_condt_mutex_, milliseconds);
+  if (not ret) {
+    this->SetFailed("Time out");
+  }
+  return ret;
 }
 
 void PocoRpcController::signal_rpc_over() {

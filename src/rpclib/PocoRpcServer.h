@@ -11,9 +11,10 @@
 #include "base/base.h"
 #include "base/fifo_queue.h"
 #include "base/task_queue.h"
-#include "rpclib/RpcSessionManager.h"
+
 #include "rpclib/RpcServiceHandler.h"
 #include "rpclib/RpcSocketAcceptor.h"
+#include "rpclib/RpcSessionManager.h"
 
 #include <Poco/Thread.h>
 #include <Poco/Net/ServerSocket.h>
@@ -47,7 +48,7 @@ class PocoRpcServer {
  public:
   friend class BaseService_Impl;
   
-  explicit PocoRpcServer(uint32 server_port);
+  explicit PocoRpcServer(uint32 server_port, const std::string& host="0.0.0.0");
   virtual ~PocoRpcServer();
 
   /**

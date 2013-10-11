@@ -2,14 +2,14 @@
 # encoding: utf-8
 
 Import('env')
-import os
+import os, sys
 from glob import glob
 
 # print("Current working dir: %s" % os.path.abspath('.'))
 
 source_files = glob('../base/*.cc') + glob('./*.cc') + glob('../rpc_proto/*.cc') + glob('../rpc_def/*.cc') + glob('../rpclib/*.cc')
 
-build_name = 'test_server'
+build_name = 'test_server_%s' % sys.platform
 env.Program(build_name, source_files)
 
 # print("==> 源文件列表")

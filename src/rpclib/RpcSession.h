@@ -12,48 +12,58 @@
 #include "base/fifo_queue.h"
 #include "rpc_proto/poco_rpc.pb.h"
 #include <Poco/Timestamp.h>
+#include <Poco/Mutex.h>
 #include <tr1/memory>
 
 namespace PocoRpc {
+
+class RpcServiceHandler;
 
 typedef std::tr1::shared_ptr<RpcMessage> RpcMessagePtr;
 
 class RpcSession {
  public:
   friend class RpcServiceHandler;
-  
+
   RpcSession(const std::string& uuid, int timeout_in_ms);
   virtual ~RpcSession();
 
   bool expired();
   const std::string& uuid();
-  
+
   void push(RpcMessagePtr rpcmsg);
   bool tryPopup(RpcMessagePtr* p_rpcmsg, int timeout);
   void ReleaseSendingRpcmsg();
-  
+
   void reg_on_pushed_cb(Poco::Runnable* cb);
   void clear_on_pushed_cb();
   void reg_on_popuped_cb(Poco::Runnable* cb);
   void clear_on_popuped_cb();
-  
+
   typedef FifoQueue<RpcMessagePtr> RpcMsgQueue;
-  
+
  private:
-  
+
   std::string client_uuid_;
-  
+
   // session timeout in microseconds 
   int64 timeout_;
-  
+
   Poco::Timestamp last_access_time_;
-  
+
   /// 等待发送的response message
   scoped_ptr<RpcMsgQueue> pending_response_;
   RpcMessagePtr sending_rpcmsg_;
 
+  RpcServiceHandler* service_handler_;
+  scoped_ptr<Poco::FastMutex> mutex_service_handler_;
+
+
   inline void update_last_atime();
-  
+
+  void reset_service_handler(RpcServiceHandler* handler);
+  void release_service_handler(RpcServiceHandler* handler);
+
   DISALLOW_COPY_AND_ASSIGN(RpcSession);
 };
 

@@ -76,7 +76,7 @@ PocoRpcChannel::~PocoRpcChannel() {
 
 /// must be called after constructor
 
-bool PocoRpcChannel::init() {
+bool PocoRpcChannel::Init() {
   net_worker_.reset(new Poco::Thread());
   response_worker_.reset(new Poco::Thread());
   ra_response_.reset(Poco::NewPermanentCallback(this, &PocoRpcChannel::process_response));
@@ -694,25 +694,25 @@ void PocoRpcChannel::auto_reconnect() {
   }
 
 
-  if (connected_) return;
-  CHECK(socket_.get() == NULL);
-  while (auto_reconnect_) {
-    bool ok = Connect();
-    re_connect_times_++;
-    if (ok) {
-      re_connect_times_ = 0; // 重连成功, 则计数归零
-      LOG(INFO) << "Reconnect OK.";
-      return;
-    } else {
-      // 重连失败, 则调用指定的callback
-      // 可以在callback函数里检查已经重连的次数, 通过set_auto_reconnect(false)
-      // 取消重连.
-      if (on_reconnect_faild_cb_.get() != NULL) {
-        on_reconnect_faild_cb_->Run();
-      }
-    }
-    Poco::Thread::sleep(FLAGS_reconnect_interval);
-  }
+//  if (connected_) return;
+//  CHECK(socket_.get() == NULL);
+//  while (auto_reconnect_) {
+//    bool ok = Connect();
+//    re_connect_times_++;
+//    if (ok) {
+//      re_connect_times_ = 0; // 重连成功, 则计数归零
+//      LOG(INFO) << "Reconnect OK.";
+//      return;
+//    } else {
+//      // 重连失败, 则调用指定的callback
+//      // 可以在callback函数里检查已经重连的次数, 通过set_auto_reconnect(false)
+//      // 取消重连.
+//      if (on_reconnect_faild_cb_.get() != NULL) {
+//        on_reconnect_faild_cb_->Run();
+//      }
+//    }
+//    Poco::Thread::sleep(FLAGS_reconnect_interval);
+//  }
 }
 
 void PocoRpcChannel::on_pushed_rpc() {

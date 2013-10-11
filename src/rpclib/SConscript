@@ -1,4 +1,26 @@
-Import('env')
-import os
+#!/usr/bin/env python
+# encoding: utf-8
 
-# print("Current working dir: %s" % os.path.abspath('.'))
+Import('env')
+
+import os, sys
+from glob import glob
+
+source_files = glob('../base/*.cc') + glob('../rpc_proto/*.cc') + glob('../rpc_def/*.cc') + glob('../rpclib/*.cc')
+
+
+lib_name = 'PocoRpc'
+# static_lib = env.StaticLibrary(lib_name, source_files)
+# shared_lib = env.SharedLibrary(lib_name, source_files)
+
+# env.Command('../../build/%s' % static_lib[0], '../rpclib/%s' % static_lib[0],
+#     [
+#         Move("$TARGET", "$SOURCE"),
+# ])
+
+# env.Command('../../build/%s' % shared_lib[0], '../rpclib/%s' % shared_lib[0],
+#     [
+#         Move("$TARGET", "$SOURCE"),
+# ])
+
+

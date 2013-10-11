@@ -46,7 +46,7 @@ class RpcServiceHandler {
           Poco::Net::SocketReactor& reactor);
 
   virtual ~RpcServiceHandler();
-
+  
  private:
   std::string client_uuid_;
   PocoRpcServer *rpc_server_;

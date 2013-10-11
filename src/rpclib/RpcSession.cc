@@ -5,13 +5,17 @@
  * Created on 2013年9月2日, 下午2:20
  */
 
-#include "RpcSession.h"
+#include "rpclib/RpcSession.h"
+#include "rpclib/RpcServiceHandler.h"
+#include <Poco/ScopedLock.h>
 
 namespace PocoRpc {
 
 RpcSession::RpcSession(const std::string& uuid, int timeout_in_ms) :
-client_uuid_(uuid), timeout_(timeout_in_ms), last_access_time_() {
+client_uuid_(uuid), timeout_(timeout_in_ms), last_access_time_(),
+service_handler_(NULL) {
   pending_response_.reset(new RpcMsgQueue());
+  mutex_service_handler_.reset(new Poco::FastMutex());
 }
 
 RpcSession::~RpcSession() {
@@ -46,22 +50,41 @@ void RpcSession::ReleaseSendingRpcmsg() {
   sending_rpcmsg_.reset();
 }
 
-void RpcSession::reg_on_pushed_cb(Poco::Runnable* cb){
+void RpcSession::reg_on_pushed_cb(Poco::Runnable* cb) {
   pending_response_->reg_on_pushed_callback(cb);
 }
-void RpcSession::clear_on_pushed_cb(){
+
+void RpcSession::clear_on_pushed_cb() {
   pending_response_->clear_on_pushed_callback();
 }
-void RpcSession::reg_on_popuped_cb(Poco::Runnable* cb){
+
+void RpcSession::reg_on_popuped_cb(Poco::Runnable* cb) {
   pending_response_->reg_on_popuped_callback(cb);
 }
-void RpcSession::clear_on_popuped_cb(){
+
+void RpcSession::clear_on_popuped_cb() {
   pending_response_->clear_on_popuped_callback();
 }
 
 void RpcSession::update_last_atime() {
   Poco::Timestamp now;
   last_access_time_ = now;
+}
+
+void RpcSession::reset_service_handler(RpcServiceHandler* handler) {
+  Poco::ScopedLock<Poco::FastMutex> lock(*mutex_service_handler_);
+  CHECK(service_handler_ != handler);
+  if (service_handler_ != NULL) {
+    delete service_handler_;
+  }
+  service_handler_ = handler;
+}
+
+void RpcSession::release_service_handler(RpcServiceHandler* handler) {
+  Poco::ScopedLock<Poco::FastMutex> lock(*mutex_service_handler_);
+  if (service_handler_ == handler) {
+    service_handler_ = NULL;
+  }
 }
 
 } // namespace PocoRpc {

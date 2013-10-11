@@ -47,7 +47,7 @@ class PocoRpcChannel : public google::protobuf::RpcChannel {
   PocoRpcChannel(const std::string& host, uint16 port);
   virtual ~PocoRpcChannel();
   
-  bool init();
+  bool Init();
 
   virtual void CallMethod(const google::protobuf::MethodDescriptor* method,
           google::protobuf::RpcController* controller,

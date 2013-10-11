@@ -1,12 +1,10 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
-Import('env')
-
 import os
 from glob import glob
 
-# print("Current working dir: %s" % os.path.abspath('.'))
+Import('env')
 
 source_files = glob('*.cc') + glob('../base/*.cc') + glob('../rpc_proto/*.cc') + glob('../rpc_def/*.cc') + glob('../rpclib/*.cc')
 
@@ -26,7 +24,7 @@ env.Program(build_name, source_files)
 # print("\t STATICLIBS = %s" % ' '.join(env['STATICLIBS']))
 # print("\t LINKFLAGS = %s" % ' '.join(env['LINKFLAGS']))
 
-Command('../../build/%s' % build_name, build_name,
+env.Command('../../build/%s' % build_name, build_name,
     [
         Move("$TARGET", "$SOURCE"),
 ])

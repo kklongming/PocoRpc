@@ -43,6 +43,7 @@ RpcServiceHandler::~RpcServiceHandler() {
     RpcSessionPtr session = rpc_server_->SessionManager()->FindOrCreate(client_uuid_);
     session->clear_on_popuped_cb();
     session->clear_on_pushed_cb();
+    session->release_service_handler(this);
   }
   unreg_handler();
   LOG(INFO) << "unreg_handler();";
@@ -203,6 +204,9 @@ void RpcServiceHandler::onReadable(const Poco::AutoPtr<Poco::Net::ReadableNotifi
         // 请求设置client_uuid_, 并注册on_pushed_cb, on_popuped_cb
         client_uuid_ = rpc_msg->client_uuid();
         RpcSessionPtr session = rpc_server_->SessionManager()->FindOrCreate(client_uuid_);
+        session->reset_service_handler(this);  
+        /// reset_service_handler(this) 必须在session->reg_on_pushed_cb(on_pushed_call) 和 
+        /// session->reg_on_popuped_cb(on_popuped_call); 之前
         Poco::Runnable* on_pushed_call = Poco::NewPermanentCallback(this,
                 &RpcServiceHandler::on_pushed_cb, session->pending_response_.get());
         Poco::Runnable* on_popuped_call = Poco::NewPermanentCallback(this,
