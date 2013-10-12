@@ -9,7 +9,7 @@ env = Environment()
 
 # print env.Dump()
 
-CPPPATH = ['/usr/local/include', os.path.abspath('src')]
+CPPPATH = ['/usr/local/include', os.path.abspath('.')]
 CPPDEFINES = []
 LIBPATH = ['/usr/local/lib']
 LIBS = ['pthread', 'protobuf', 'PocoFoundation', 'PocoUtil', 'PocoCrypto', 'PocoNet', 'gflags', 'glog']
@@ -32,11 +32,20 @@ env['LINKFLAGS'] = LINKFLAGS
 
 Export('env')
 
-SConscript(['src/rpc_proto/SConscript',
-            'src/rpc_def/SConscript',
-            'src/rpclib/SConscript',
-            'src/server/SConscript',
-            'src/client/SConscript',
-            'src/temptest/SConscript'
+SConscript(['PocoRpc/rpc_proto/SConscript',
+            'PocoRpc/rpc_def/SConscript',
+            'PocoRpc/rpclib/SConscript',
+            'PocoRpc/server/SConscript',
+            'PocoRpc/client/SConscript',
+            'PocoRpc/temptest/SConscript'
             ])
+
+print("==> 编译参数")
+print("\t CPPPATH = %s" % ' '.join(env['CPPPATH']))
+print("\t CPPDEFINES = %s" % ' '.join(env['CPPDEFINES']))
+print("\t CPPFLAGS = %s" % ' '.join(env['CPPFLAGS']))
+print("\t LIBPATH = %s" % ' '.join(env['LIBPATH']))
+print("\t LIBS = %s" % ' '.join(env['LIBS']))
+print("\t STATICLIBS = %s" % ' '.join(env['STATICLIBS']))
+print("\t LINKFLAGS = %s" % ' '.join(env['LINKFLAGS']))
 
