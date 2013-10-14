@@ -65,7 +65,7 @@ cd protobuf-2.5.0
 make && make install
 ```
 
-* 添加**_usr_local_lib.conf_**, 保证能够正常从 **/usr/local/lib** 下加载动态库
+* 添加***usr_local_lib.conf***, 保证能够正常从 **/usr/local/lib** 下加载动态库
 
 ```bash
 echo "/usr/local/lib" > /etc/ld.so.conf.d/usr_local_lib.conf
