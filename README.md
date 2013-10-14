@@ -25,10 +25,52 @@ brew install python scons
 
 ```bash
 yum -y groupinstall  "Development tools"
+yum -y install openssl-devel
+yum -y install scons
 ``` 
 
-* TO DO...
+* 编译安装Poco
 
+```bash
+wget http://pocoproject.org/releases/poco-1.4.6/poco-1.4.6p1-all.tar.gz 
+tar -vxf poco-1.4.6p1-all.tar.gz
+cd poco-1.4.6p1-all
+./configure --config=Linux --omit=Data/MySQL,Data/ODBC,PageCompiler --cflags=-fPIC --no-samples --no-tests --static --shared
+make && make install
+```
+
+* 编译安装 gflags, glog, protobuf
+
+```bash
+wget http://gflags.googlecode.com/files/gflags-2.0.tar.gz
+tar -vxf gflags-2.0.tar.gz
+cd gflags-2.0
+./configure --enable-shared --enable-static
+make && make install
+```
+
+```bash
+wget http://google-glog.googlecode.com/files/glog-0.3.3.tar.gz
+tar -vxf glog-0.3.3.tar.gz
+cd glog-0.3.3
+./configure --enable-shared --enable-static
+make && make install
+```
+
+```bash
+wget http://protobuf.googlecode.com/files/protobuf-2.5.0.tar.bz2
+tar -vxf protobuf-2.5.0.tar.bz2
+cd protobuf-2.5.0
+./configure
+make && make install
+```
+
+* 添加**_usr_local_lib.conf_**, 保证能够正常从 **/usr/local/lib** 下加载动态库
+
+```bash
+echo "/usr/local/lib" > /etc/ld.so.conf.d/usr_local_lib.conf
+ldconfig -v
+```
 
 ##Ubuntu 下构建编译环境##
 * TO DO...
