@@ -7,12 +7,26 @@
 
 #include "MultiThreadTest.h"
 
-MultiThreadTest::MultiThreadTest() {
-}
-
-MultiThreadTest::MultiThreadTest(const MultiThreadTest& orig) {
+MultiThreadTest::MultiThreadTest(int thread_count) : thread_count_(thread_count),
+        exit_(false) {
+  thread_list_.reset(new ThreadPtrVec());
+  ra_test_.reset(Poco::NewPermanentCallback(this, &MultiThreadTest::test));
 }
 
 MultiThreadTest::~MultiThreadTest() {
+}
+
+void MultiThreadTest::start() {
+
+}
+
+void MultiThreadTest::stop() {
+
+}
+
+void MultiThreadTest::test() {
+  while (not exit_) {
+
+  }
 }
 
