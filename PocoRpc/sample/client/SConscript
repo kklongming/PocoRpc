@@ -8,7 +8,7 @@ from glob import glob
 
 # print("Current working dir: %s" % os.path.abspath('.'))
 
-source_files = glob('*.cc') + glob('../base/*.cc') + glob('../rpc_proto/*.cc') + glob('../rpc_def/*.cc') + glob('../rpclib/*.cc')
+source_files = glob('*.cc') + glob('../../base/*.cc') + glob('../../rpc_proto/*.cc') + glob('../../rpc_def/*.cc') + glob('../../rpclib/*.cc')
 
 # print("==> 源文件列表 ***")
 # for s in source_files:
@@ -26,7 +26,7 @@ env.Program(build_name, source_files)
 # print("\t STATICLIBS = %s" % ' '.join(env['STATICLIBS']))
 # print("\t LINKFLAGS = %s" % ' '.join(env['LINKFLAGS']))
 
-Command('../../build/%s' % build_name, build_name,
+Command('../../../build/%s' % build_name, build_name,
     [
         Move("$TARGET", "$SOURCE"),
 ])

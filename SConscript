@@ -35,8 +35,8 @@ Export('env')
 SConscript(['PocoRpc/rpc_proto/SConscript',
             'PocoRpc/rpc_def/SConscript',
             'PocoRpc/rpclib/SConscript',
-            'PocoRpc/server/SConscript',
-            'PocoRpc/client/SConscript',
+            'PocoRpc/sample/server/SConscript',
+            'PocoRpc/sample/client/SConscript',
             'PocoRpc/temptest/SConscript'
             ])
 
