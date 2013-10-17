@@ -8,7 +8,8 @@ from glob import glob
 
 # print("Current working dir: %s" % os.path.abspath('.'))
 
-source_files = glob('*.cc') + glob('../../base/*.cc') + glob('../../rpc_proto/*.cc') + glob('../../rpc_def/*.cc') + glob('../../rpclib/*.cc')
+
+source_files = glob('*.cc') + glob('../../base/*.cc') + glob('../../rpc_proto/*.cc') + glob('../../rpc_def/*.cc') + glob('../../rpclib/*.cc') + glob('../rpc_define/*.cc')
 
 # print("==> 源文件列表 ***")
 # for s in source_files:

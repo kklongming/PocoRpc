@@ -30,7 +30,6 @@ method_desc_(NULL), request_(NULL), response_(NULL), on_done_callback_(NULL) {
 }
 
 PocoRpcController::~PocoRpcController() {
-  LOG(INFO) << "Destory PocoRpcController. id=" << id_;
 }
 
 void PocoRpcController::Reset() {
@@ -109,7 +108,6 @@ BytesBuffer* PocoRpcController::NewBytesBuffer() {
   rpc_msg->set_client_uuid(poco_rpc_ch_->get_uuid());
   
   BytesBuffer* rpc_buf = new BytesBuffer(rpc_msg->ByteSize());
-  LOG(INFO) << "Request BytesBuffer size=" << rpc_buf->get_body_size();
   rpc_msg->SerializeToArray(reinterpret_cast<void*> (rpc_buf->pbody()),
           rpc_msg->ByteSize());
   return rpc_buf;

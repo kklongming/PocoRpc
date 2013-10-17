@@ -385,7 +385,6 @@ uint32 get_rpc_msg_size(Poco::Net::StreamSocket* sock) {
 }
 
 void PocoRpcChannel::onReadable(const Poco::AutoPtr<Poco::Net::ReadableNotification>& pNf) {
-  LOG(INFO) << "socket is readable";
   if (socket_->available() == 0) {
     LOG(INFO) << "socket is readable status, but it's available data length == 0, so close this socket.";
     on_socket_error();
@@ -455,11 +454,10 @@ void PocoRpcChannel::onReadable(const Poco::AutoPtr<Poco::Net::ReadableNotificat
     }
 
     buf_recving_->set_done_size(buf_recving_->get_done_size() + recv_size);
-    LOG(INFO) << "recv_size = " << recv_size;
+
     if (buf_recving_->get_done_size() == buf_recving_->get_total_size()) {
       // response buf 接收 100%
       Poco::ScopedLock<Poco::FastMutex> lock(*mutex_recv_buf_array_);
-      LOG(INFO) << "完整接收 Response";
       recv_buf_array_->push(buf_recving_.release()); // 小心, 不能使用Reset() 方法
     }
   } catch (Poco::Exception ex) {
@@ -471,7 +469,6 @@ void PocoRpcChannel::onReadable(const Poco::AutoPtr<Poco::Net::ReadableNotificat
 
 void PocoRpcChannel::onWritable(const Poco::AutoPtr<Poco::Net::WritableNotification>& pNf) {
   Poco::AutoPtr<Poco::Net::WritableNotification>& tmpNf = const_cast<Poco::AutoPtr<Poco::Net::WritableNotification>&> (pNf);
-  LOG(INFO) << "socket is Writable. socket_fd=" << tmpNf->socket().impl()->sockfd();
   if (rpc_sending_.isNull()) {
     // 从 rpc_pending_ 获取一个AutoPocoRpcControllerPtr, 并且 IsCanceled == false
     AutoPocoRpcControllerPtr tmp_rpc(NULL);
@@ -514,7 +511,6 @@ void PocoRpcChannel::onWritable(const Poco::AutoPtr<Poco::Net::WritableNotificat
     if (buf_sending_->get_done_size() == buf_sending_->get_total_size()) {
       // 当前buf的所有数据发送完成 100%, rpc 移动到rpc_waiting_ 队列里.
       Poco::ScopedLock<Poco::FastMutex> lock(*mutex_waiting_response_);
-      LOG(INFO) << "Request sended: " << rpc_sending_->request_->GetDescriptor()->full_name();
       rpc_waiting_->insert(std::pair<uint64, AutoPocoRpcControllerPtr>(
               rpc_sending_->id(),
               rpc_sending_));
@@ -544,9 +540,9 @@ void PocoRpcChannel::process_response() {
     BytesBuffer* recved_buf = NULL;
     {
       Poco::ScopedLock<Poco::FastMutex> lock(*mutex_recv_buf_array_);
-      if (recv_buf_array_->size() > 0) {
-        LOG(INFO) << "recv_buf_array_->size()=" << recv_buf_array_->size();
-      }
+//      if (recv_buf_array_->size() > 0) {
+//        LOG(INFO) << "recv_buf_array_->size()=" << recv_buf_array_->size();
+//      }
       recv_buf_array_->tryPopup(&recved_buf, 0);
     }
     if (recved_buf != NULL) {
@@ -558,8 +554,6 @@ void PocoRpcChannel::process_response() {
         on_socket_error();
         continue;
       }
-
-      LOG(INFO) << rpc_msg->DebugString();
 
       AutoPocoRpcControllerPtr rpc_ctrl = NULL;
       {
@@ -719,7 +713,7 @@ void PocoRpcChannel::on_pushed_rpc() {
   if (rpc_pending_->size() == 1) {
     if (socket_.get() != NULL) {
       reg_on_writeable(socket_.get());
-      LOG(INFO) << "****************************** reg_on_writeable";
+//      LOG(INFO) << "****************************** reg_on_writeable";
     }
   }
 }
@@ -728,7 +722,7 @@ void PocoRpcChannel::on_popup_rpc() {
   if (rpc_pending_->size() == 0) {
     if (socket_.get() != NULL) {
       unreg_on_writeable(socket_.get());
-      LOG(INFO) << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ unreg_on_writeable";
+//      LOG(INFO) << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ unreg_on_writeable";
     }
   }
 }

@@ -297,14 +297,14 @@ void RpcServiceHandler::onError(const Poco::AutoPtr<Poco::Net::ErrorNotification
 void RpcServiceHandler::on_pushed_cb(RpcSession::RpcMsgQueue* queue) {
   if (queue->size() == 1) {
     reg_onWritable();
-    LOG(INFO) << "regist socket on_writeable";
+//    LOG(INFO) << "regist socket on_writeable";
   }
 }
 
 void RpcServiceHandler::on_popuped_cb(RpcSession::RpcMsgQueue* queue) {
   if (queue->size() == 0) {
     unreg_onWritable();
-    LOG(INFO) << "UNREGIST socket on_writeable";
+//    LOG(INFO) << "UNREGIST socket on_writeable";
   }
 }
 

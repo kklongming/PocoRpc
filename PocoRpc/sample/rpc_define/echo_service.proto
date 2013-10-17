@@ -1,0 +1,14 @@
+package Sample;
+option cc_generic_services = true;
+
+message EchoReq {
+    required string msg = 1;
+}
+
+message EchoReply {
+    required string msg = 1;
+}
+
+service EchoService {
+    rpc Echo(EchoReq) returns(EchoReply);
+}

@@ -46,7 +46,6 @@ bool RpcSession::tryPopup(RpcMessagePtr* p_rpcmsg, int timeout) {
 }
 
 void RpcSession::ReleaseSendingRpcmsg() {
-  LOG(INFO) << "Response Sended: {\n" << sending_rpcmsg_->DebugString() << "}";
   sending_rpcmsg_.reset();
 }
 

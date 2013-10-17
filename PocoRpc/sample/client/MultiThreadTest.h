@@ -10,9 +10,12 @@
 
 #include "PocoRpc/base/base.h"
 #include "PocoRpc/base/runable.h"
+#include "PocoRpc/rpclib/PocoRpcChannel.h"
+#include "PocoRpc/sample/rpc_define/echo_service.pb.h"
 
 #include <Poco/Thread.h>
 #include <Poco/Mutex.h>
+#include <Poco/Timestamp.h>
 #include <Poco/SharedPtr.h>
 
 class MultiThreadTest {
@@ -35,6 +38,12 @@ class MultiThreadTest {
   scoped_ptr<Poco::FastMutex> mutex_count_;
   scoped_ptr<ThreadPtrVec> thread_list_;
   scoped_ptr<Poco::Runnable> ra_test_;
+  
+  scoped_ptr<PocoRpc::PocoRpcChannel> rpc_ch_;
+  scoped_ptr<Sample::EchoService_Stub> echo_svc_stub_;
+  
+  scoped_ptr<Poco::Timestamp> start_time_;
+  scoped_ptr<Poco::Timestamp> stop_time_;
 
   void test();
 

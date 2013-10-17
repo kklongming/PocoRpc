@@ -1,8 +1,11 @@
 #include "PocoRpc/base/base.h"
 #include "PocoRpc/base/closure.h"
 #include "PocoRpc/base/runable.h"
+#include "PocoRpc/base/daemon.h"
 #include "PocoRpc/RpcClient.h"
 #include "PocoRpc/rpc_def/base_service.pb.h"
+
+#include "MultiThreadTest.h"
 
 #include <Poco/Thread.h>
 
@@ -54,6 +57,14 @@ void StartClient() {
   DebugString(&reply);
 }
 
+void test2() {
+  scoped_ptr<MultiThreadTest> test(new MultiThreadTest(8));
+  test->start();
+  waitForTerminationRequest();
+  test->stop();
+  std::cout << test->TestResult() << std::endl;
+}
+
 int main(int argc, char* argv[]) {
   // google::SetVersionString(UFS_VERSION);
   google::InitGoogleLogging(argv[0]);
@@ -61,8 +72,7 @@ int main(int argc, char* argv[]) {
   FLAGS_logtostderr = true;
 
   LOG(INFO) << "==> Start Rpc Client...";
-  StartClient();
-  //  StartClient();
+  test2();
   LOG(INFO) << "==> Exit Rpc Client...";
 
   return 0;
