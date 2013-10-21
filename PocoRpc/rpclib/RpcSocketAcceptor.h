@@ -38,7 +38,7 @@ class PocoRpcServer;
 class RpcSocketAcceptor : public SocketAcceptor<RpcServiceHandler> {
  public:
   RpcSocketAcceptor(PocoRpcServer *rpc_server, Poco::Net::ServerSocket& socket,
-          Poco::Net::SocketReactor& reactor);
+          Poco::Net::SocketReactor& read_reactor, Poco::Net::SocketReactor& write_reactor);
 
   virtual ~RpcSocketAcceptor();
 
@@ -47,6 +47,7 @@ class RpcSocketAcceptor : public SocketAcceptor<RpcServiceHandler> {
 
  private:
   PocoRpcServer *rpc_server_;
+  Poco::Net::SocketReactor* p_write_reactor_;
 
   DISALLOW_COPY_AND_ASSIGN(RpcSocketAcceptor);
 

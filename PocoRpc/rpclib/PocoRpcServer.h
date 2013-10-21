@@ -78,8 +78,10 @@ class PocoRpcServer {
   
   scoped_ptr<ServiceMap> service_map_;
   scoped_ptr<Poco::Net::ServerSocket> server_sock_;
-  scoped_ptr<Poco::Net::SocketReactor> reactor_;
-  scoped_ptr<Poco::Thread> reactor_worker_;
+  scoped_ptr<Poco::Net::SocketReactor> read_reactor_;
+  scoped_ptr<Poco::Thread> read_reactor_worker_;
+  scoped_ptr<Poco::Net::SocketReactor> write_reactor_;
+  scoped_ptr<Poco::Thread> write_reactor_worker_;
   scoped_ptr<RpcSocketAcceptor> acceptor_;
   
   scoped_ptr<TaskQueue> rpc_processor_;

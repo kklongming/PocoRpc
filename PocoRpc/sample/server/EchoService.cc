@@ -6,6 +6,7 @@
  */
 
 #include "EchoService.h"
+#include "PocoRpc/rpclib/PocoRpcError.h"
 
 namespace Sample {
 
@@ -22,6 +23,7 @@ void EchoService_Imp::Echo(::google::protobuf::RpcController* controller,
                            ::Sample::EchoReply* response,
                            ::google::protobuf::Closure* done) {
   response->set_msg(request->msg());
+  response->set_status(PocoRpc::E_OK);
   if (done != NULL) {
     done->Run();
   }

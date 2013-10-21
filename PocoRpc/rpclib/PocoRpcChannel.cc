@@ -14,6 +14,7 @@
 #include "PocoRpc/rpc_proto/poco_rpc.pb.h"
 #include "PocoRpc/base/runable.h"
 #include "PocoRpc/base/base.h"
+#include "PocoRpc/base/chronograph.h"
 
 #include <Poco/Thread.h>
 #include <Poco/Mutex.h>
@@ -28,6 +29,7 @@
 #include <Poco/NObserver.h>
 #include <Poco/UUID.h>
 #include <Poco/UUIDGenerator.h>
+#include <Poco/Format.h>
 
 DEFINE_int64(socket_send_timeout, 0, "socket send timeout in millisecond. \
 0: using system default value.");
@@ -53,14 +55,13 @@ on_reconnect_faild_cb_(NULL), onWritable_ready_(false) {
   rpc_waiting_.reset(new PocoRpcControllerMap());
   mutex_waiting_response_.reset(new Poco::FastMutex());
   recv_buf_array_.reset(new BytesBufferQueue());
-  mutex_recv_buf_array_.reset(new Poco::FastMutex());
   address_.reset(new Poco::Net::SocketAddress(host, port));
 
   reconnect_worker_.reset(new Poco::Thread());
   reconnect_cont_.reset(new Poco::Condition());
   mutex_reconnect_cont_.reset(new Poco::FastMutex());
   reconnect_func_.reset(Poco::NewPermanentCallback(this,
-          &PocoRpcChannel::auto_reconnect));
+                                                   &PocoRpcChannel::auto_reconnect));
 
   mutex_onWritable_ready_.reset(new Poco::FastMutex());
 }
@@ -77,13 +78,16 @@ PocoRpcChannel::~PocoRpcChannel() {
 /// must be called after constructor
 
 bool PocoRpcChannel::Init() {
-  net_worker_.reset(new Poco::Thread());
+  read_net_worker_.reset(new Poco::Thread());
+  write_net_worker_.reset(new Poco::Thread());
   response_worker_.reset(new Poco::Thread());
   ra_response_.reset(Poco::NewPermanentCallback(this, &PocoRpcChannel::process_response));
 
-  reactor_.reset(new PocoRpcSocketReactor());
-  // net_worker_, response_worker_ 2个线程在构造函数里启动, 在析构函数里stop
-  net_worker_->start(*reactor_);
+  read_reactor_.reset(new PocoRpcSocketReactor());
+  write_reactor_.reset(new PocoRpcSocketReactor());
+  // read_net_worker_, write_net_worker_, response_worker_ 3个线程在构造函数里启动, 在析构函数里stop
+  read_net_worker_->start(*read_reactor_);
+  write_net_worker_->start(*write_reactor_);
   response_worker_->start(*ra_response_);
   exit_ = false;
 
@@ -111,10 +115,10 @@ bool PocoRpcChannel::Init() {
  * @param done
  */
 void PocoRpcChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
-        google::protobuf::RpcController* controller,
-        const google::protobuf::Message* request,
-        google::protobuf::Message* response,
-        google::protobuf::Closure* done) {
+                                google::protobuf::RpcController* controller,
+                                const google::protobuf::Message* request,
+                                google::protobuf::Message* response,
+                                google::protobuf::Closure* done) {
   PocoRpcController* rpc_controller = dynamic_cast<PocoRpcController*> (controller);
   CHECK(rpc_controller != NULL) << "RpcController must be class: PocoRpcController";
   rpc_controller->set_method_desc(method);
@@ -134,11 +138,11 @@ void PocoRpcChannel::CallMethod(const google::protobuf::MethodDescriptor* method
 void PocoRpcChannel::Exit() {
   CHECK(exit_ == false);
   exit_ = true;
-  rpc_pending_->clear_on_popuped_callback();
-  rpc_pending_->clear_on_pushed_callback();
   reconnect_worker_->join();
-  reactor_->stop();
-  net_worker_->join();
+  read_reactor_->stop();
+  read_net_worker_->join();
+  write_reactor_->stop();
+  write_net_worker_->join();
   if (socket_.get() != NULL) {
     unreg_reactor_handler(socket_.get());
   }
@@ -210,7 +214,7 @@ bool PocoRpcChannel::Connect() {
     socket_.reset(CreateSocket());
   } catch (Poco::Exception ex) {
     LOG(ERROR) << "Faild to connect rpc server: " << address_->toString() <<
-            " Exception: " << ex.message();
+        " Exception: " << ex.message();
     if (socket_.get() != NULL) {
       socket_->close();
       socket_.release();
@@ -220,17 +224,8 @@ bool PocoRpcChannel::Connect() {
   }
   // successed cennected with rpc server
   connected_ = true;
-  rpc_pending_->clear_on_popuped_callback();
-  rpc_pending_->clear_on_pushed_callback();
 
   reg_reactor_handler(socket_.get());
-  
-  Poco::Runnable* on_pushed_cb = Poco::NewPermanentCallback(this,
-          &PocoRpcChannel::on_pushed_rpc);
-  Poco::Runnable* on_popuped_cb = Poco::NewPermanentCallback(this,
-          &PocoRpcChannel::on_popup_rpc);
-  rpc_pending_->reg_on_pushed_callback(on_pushed_cb);
-  rpc_pending_->reg_on_popuped_callback(on_popuped_cb);
 
   scoped_ptr<BaseService_Stub> bservice(new BaseService_Stub(this));
   AutoPocoRpcControllerPtr ping_ctr = NewRpcController();
@@ -242,8 +237,6 @@ bool PocoRpcChannel::Connect() {
   ping_ctr->tryWait(FLAGS_ping_time_out);
   if (reply.status() != E_OK) {
     LOG(ERROR) << "Ping server faild.";
-    rpc_pending_->clear_on_popuped_callback();
-    rpc_pending_->clear_on_pushed_callback();
 
     // 可能在之前的过程中, 调用了on_socket_error(), 则就不需要再次unreg_reactor_handler
     // 通过socket_.get() 是否为NULL 来进行判断
@@ -302,8 +295,6 @@ Poco::Net::StreamSocket* PocoRpcChannel::CreateSocket() {
   // @todo 增加flags, 提供参数设置socket的选项
   Poco::Net::StreamSocket* sock = new Poco::Net::StreamSocket();
   sock->connect(*address_);
-  PLOG(INFO) << "******** connect socket_fd=" << sock->impl()->sockfd() <<
-          " erron=" << errno;
   sock->setBlocking(false);
   sock->setKeepAlive(true);
   sock->setNoDelay(true);
@@ -330,10 +321,12 @@ void PocoRpcChannel::reg_on_writeable(Poco::Net::StreamSocket* sock) {
   if (onWritable_ready_) {
     return;
   }
-  reactor_->addEventHandler(*sock,
-          Poco::NObserver<PocoRpcChannel, Poco::Net::WritableNotification>(*this,
-          &PocoRpcChannel::onWritable));
+
+  write_reactor_->addEventHandler(*sock,
+                                  Poco::NObserver<PocoRpcChannel, Poco::Net::WritableNotification>(*this,
+                                  &PocoRpcChannel::onWritable));
   onWritable_ready_ = true;
+  LOG(INFO) << "****************************** reg_on_writeable";
 }
 
 void PocoRpcChannel::unreg_on_writeable(Poco::Net::StreamSocket* sock) {
@@ -341,40 +334,41 @@ void PocoRpcChannel::unreg_on_writeable(Poco::Net::StreamSocket* sock) {
   if (not onWritable_ready_) {
     return;
   }
-  reactor_->removeEventHandler(*sock,
-          Poco::NObserver<PocoRpcChannel, Poco::Net::WritableNotification>(*this,
-          &PocoRpcChannel::onWritable));
+  write_reactor_->removeEventHandler(*sock,
+                                     Poco::NObserver<PocoRpcChannel, Poco::Net::WritableNotification>(*this,
+                                     &PocoRpcChannel::onWritable));
   onWritable_ready_ = false;
+  LOG(INFO) << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ unreg_on_writeable";
 }
 
 void PocoRpcChannel::reg_reactor_handler(Poco::Net::StreamSocket* sock) {
-  reactor_->addEventHandler(*sock,
-          Poco::NObserver<PocoRpcChannel, Poco::Net::ReadableNotification>(*this,
-          &PocoRpcChannel::onReadable));
+  read_reactor_->addEventHandler(*sock,
+                                 Poco::NObserver<PocoRpcChannel, Poco::Net::ReadableNotification>(*this,
+                                 &PocoRpcChannel::onReadable));
   reg_on_writeable(sock);
-  reactor_->addEventHandler(*sock,
-          Poco::NObserver<PocoRpcChannel, Poco::Net::ShutdownNotification>(*this,
-          &PocoRpcChannel::onShutdown));
-  reactor_->addEventHandler(*sock,
-          Poco::NObserver<PocoRpcChannel, Poco::Net::ErrorNotification>(*this,
-          &PocoRpcChannel::onError));
+  read_reactor_->addEventHandler(*sock,
+                                 Poco::NObserver<PocoRpcChannel, Poco::Net::ShutdownNotification>(*this,
+                                 &PocoRpcChannel::onShutdown));
+  read_reactor_->addEventHandler(*sock,
+                                 Poco::NObserver<PocoRpcChannel, Poco::Net::ErrorNotification>(*this,
+                                 &PocoRpcChannel::onError));
   LOG(INFO) << "########## reg_reactor_handler fd=" << sock->impl()->sockfd() <<
-          " ref_count=" << sock->impl()->referenceCount();
+      " ref_count=" << sock->impl()->referenceCount();
 }
 
 void PocoRpcChannel::unreg_reactor_handler(Poco::Net::StreamSocket* sock) {
-  reactor_->removeEventHandler(*sock,
-          Poco::NObserver<PocoRpcChannel, Poco::Net::ReadableNotification>(*this,
-          &PocoRpcChannel::onReadable));
+  read_reactor_->removeEventHandler(*sock,
+                                    Poco::NObserver<PocoRpcChannel, Poco::Net::ReadableNotification>(*this,
+                                    &PocoRpcChannel::onReadable));
   unreg_on_writeable(sock);
-  reactor_->removeEventHandler(*sock,
-          Poco::NObserver<PocoRpcChannel, Poco::Net::ShutdownNotification>(*this,
-          &PocoRpcChannel::onShutdown));
-  reactor_->removeEventHandler(*sock,
-          Poco::NObserver<PocoRpcChannel, Poco::Net::ErrorNotification>(*this,
-          &PocoRpcChannel::onError));
+  read_reactor_->removeEventHandler(*sock,
+                                    Poco::NObserver<PocoRpcChannel, Poco::Net::ShutdownNotification>(*this,
+                                    &PocoRpcChannel::onShutdown));
+  read_reactor_->removeEventHandler(*sock,
+                                    Poco::NObserver<PocoRpcChannel, Poco::Net::ErrorNotification>(*this,
+                                    &PocoRpcChannel::onError));
   LOG(INFO) << "########## unreg_reactor_handler fd=" << sock->impl()->sockfd() <<
-          " ref_count=" << sock->impl()->referenceCount();
+      " ref_count=" << sock->impl()->referenceCount();
 }
 
 uint32 get_rpc_msg_size(Poco::Net::StreamSocket* sock) {
@@ -433,9 +427,9 @@ void PocoRpcChannel::onReadable(const Poco::AutoPtr<Poco::Net::ReadableNotificat
   // buf_recving_ ready
   try {
     uint32 recv_size = socket_->receiveBytes(
-            reinterpret_cast<void*> (buf_recving_->phead() + buf_recving_->get_done_size()),
-            (buf_recving_->get_total_size() - buf_recving_->get_done_size())
-            );
+                                             reinterpret_cast<void*> (buf_recving_->phead() + buf_recving_->get_done_size()),
+                                             (buf_recving_->get_total_size() - buf_recving_->get_done_size())
+                                             );
     if (recv_size == -1) {
       if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) {
         LOG(WARNING) << "socket is EAGAIN or EWOULDBLOCK or EINTR";
@@ -457,7 +451,6 @@ void PocoRpcChannel::onReadable(const Poco::AutoPtr<Poco::Net::ReadableNotificat
 
     if (buf_recving_->get_done_size() == buf_recving_->get_total_size()) {
       // response buf 接收 100%
-      Poco::ScopedLock<Poco::FastMutex> lock(*mutex_recv_buf_array_);
       recv_buf_array_->push(buf_recving_.release()); // 小心, 不能使用Reset() 方法
     }
   } catch (Poco::Exception ex) {
@@ -472,7 +465,7 @@ void PocoRpcChannel::onWritable(const Poco::AutoPtr<Poco::Net::WritableNotificat
   if (rpc_sending_.isNull()) {
     // 从 rpc_pending_ 获取一个AutoPocoRpcControllerPtr, 并且 IsCanceled == false
     AutoPocoRpcControllerPtr tmp_rpc(NULL);
-    rpc_pending_->tryPopup(&tmp_rpc, 0);
+    rpc_pending_->tryPopup(&tmp_rpc, 100);
     if (tmp_rpc.isNull()) {
       /// rpc_pending_ 队列里没有需要发送的request, 推出, 等待下一次
       /// onWritable 操作
@@ -512,8 +505,8 @@ void PocoRpcChannel::onWritable(const Poco::AutoPtr<Poco::Net::WritableNotificat
       // 当前buf的所有数据发送完成 100%, rpc 移动到rpc_waiting_ 队列里.
       Poco::ScopedLock<Poco::FastMutex> lock(*mutex_waiting_response_);
       rpc_waiting_->insert(std::pair<uint64, AutoPocoRpcControllerPtr>(
-              rpc_sending_->id(),
-              rpc_sending_));
+                           rpc_sending_->id(),
+                           rpc_sending_));
       rpc_sending_->SetFailed("Waiting for response");
       rpc_sending_.assign(NULL);
       buf_sending_.release();
@@ -538,18 +531,14 @@ void PocoRpcChannel::process_response() {
   while (true) {
     if (exit_) return;
     BytesBuffer* recved_buf = NULL;
-    {
-      Poco::ScopedLock<Poco::FastMutex> lock(*mutex_recv_buf_array_);
-//      if (recv_buf_array_->size() > 0) {
-//        LOG(INFO) << "recv_buf_array_->size()=" << recv_buf_array_->size();
-//      }
-      recv_buf_array_->tryPopup(&recved_buf, 0);
-    }
+
+    recv_buf_array_->tryPopup(&recved_buf, 100);
+
     if (recved_buf != NULL) {
       scoped_ptr<RpcMessage> rpc_msg(new RpcMessage());
 
       if (not rpc_msg->ParseFromArray(recved_buf->pbody(),
-              recved_buf->get_body_size())) {
+                                      recved_buf->get_body_size())) {
         LOG(ERROR) << "RpcMessage 反序列化出错";
         on_socket_error();
         continue;
@@ -573,7 +562,7 @@ void PocoRpcChannel::process_response() {
         rpc_ctrl->signal_rpc_over();
       }
     } else {
-      Poco::Thread::sleep(150);
+      //      Poco::Thread::sleep(25);
     }
 
     // rpc_waiting_ 里可能会存在一些已经标记成Canceled的Rpc, 找到并将其从
@@ -602,7 +591,7 @@ void PocoRpcChannel::process_response() {
  */
 void PocoRpcChannel::cancel_waiting_response_rpc(const std::string& reason) {
   scoped_ptr< std::vector<AutoPocoRpcControllerPtr> > tmp_rpc_list(
-          new std::vector<AutoPocoRpcControllerPtr>());
+                                                                   new std::vector<AutoPocoRpcControllerPtr>());
   {
     Poco::ScopedLock<Poco::FastMutex> lock(*mutex_waiting_response_);
     PocoRpcControllerMap::iterator it = rpc_waiting_->begin();
@@ -626,8 +615,6 @@ void PocoRpcChannel::cancel_waiting_response_rpc(const std::string& reason) {
 void PocoRpcChannel::on_socket_error() {
   LOG(INFO) << "on_socket_error";
   CHECK(socket_.get() != NULL) << "只有socket 发送错误的时候才会调用此方法, 因此socket_不应该为NULL";
-  rpc_pending_->clear_on_popuped_callback();
-  rpc_pending_->clear_on_pushed_callback();
   // 2. 取消reactor 对此socket进行select/poll检测, 关闭socket, 
   unreg_reactor_handler(socket_.get());
   socket_->close();
@@ -685,45 +672,6 @@ void PocoRpcChannel::auto_reconnect() {
       reconnect_cont_->tryWait(*mutex_reconnect_cont_, 2000);
     }
 
-  }
-
-
-//  if (connected_) return;
-//  CHECK(socket_.get() == NULL);
-//  while (auto_reconnect_) {
-//    bool ok = Connect();
-//    re_connect_times_++;
-//    if (ok) {
-//      re_connect_times_ = 0; // 重连成功, 则计数归零
-//      LOG(INFO) << "Reconnect OK.";
-//      return;
-//    } else {
-//      // 重连失败, 则调用指定的callback
-//      // 可以在callback函数里检查已经重连的次数, 通过set_auto_reconnect(false)
-//      // 取消重连.
-//      if (on_reconnect_faild_cb_.get() != NULL) {
-//        on_reconnect_faild_cb_->Run();
-//      }
-//    }
-//    Poco::Thread::sleep(FLAGS_reconnect_interval);
-//  }
-}
-
-void PocoRpcChannel::on_pushed_rpc() {
-  if (rpc_pending_->size() == 1) {
-    if (socket_.get() != NULL) {
-      reg_on_writeable(socket_.get());
-//      LOG(INFO) << "****************************** reg_on_writeable";
-    }
-  }
-}
-
-void PocoRpcChannel::on_popup_rpc() {
-  if (rpc_pending_->size() == 0) {
-    if (socket_.get() != NULL) {
-      unreg_on_writeable(socket_.get());
-//      LOG(INFO) << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ unreg_on_writeable";
-    }
   }
 }
 

@@ -28,8 +28,10 @@ PocoRpcServer::PocoRpcServer(uint32 server_port, const std::string& host) :
 exited_(false), acceptor_(NULL) {
   service_map_.reset(new ServiceMap());
   server_sock_.reset(new Poco::Net::ServerSocket(Poco::Net::SocketAddress(host, (unsigned short) server_port)));
-  reactor_.reset(new PocoRpcSocketReactor());
-  reactor_worker_.reset(new Poco::Thread());
+  read_reactor_.reset(new PocoRpcSocketReactor());
+  read_reactor_worker_.reset(new Poco::Thread());
+  write_reactor_.reset(new PocoRpcSocketReactor());
+  write_reactor_worker_.reset(new Poco::Thread());
   rpc_processor_.reset(new TaskQueue(FLAGS_rpc_worker_count_));
   session_mgr_.reset(new RpcSessionManager(FLAGS_rpc_session_timeout,
           FLAGS_rpc_check_interval));
@@ -54,9 +56,10 @@ void PocoRpcServer::reg_service(::google::protobuf::Service* service) {
 }
 
 void PocoRpcServer::run() {
-  acceptor_.reset(new RpcSocketAcceptor(this, *server_sock_, *reactor_));
+  acceptor_.reset(new RpcSocketAcceptor(this, *server_sock_, *read_reactor_, *write_reactor_));
   rpc_processor_->Start();
-  reactor_worker_->start(*reactor_);
+  read_reactor_worker_->start(*read_reactor_);
+  write_reactor_worker_->start(*write_reactor_);
 }
 
 void PocoRpcServer::waitForTerminationRequest() {
@@ -64,8 +67,10 @@ void PocoRpcServer::waitForTerminationRequest() {
 }
 
 void PocoRpcServer::exit() {
-  reactor_->stop();
-  reactor_worker_->join();
+  read_reactor_->stop();
+  write_reactor_->stop();
+  read_reactor_worker_->join();
+  write_reactor_worker_->join();
   rpc_processor_->StopImmediately();
   rpc_processor_->ClearTasks();
   server_sock_->close();

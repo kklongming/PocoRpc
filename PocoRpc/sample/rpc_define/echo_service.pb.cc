@@ -53,7 +53,8 @@ void protobuf_AssignDesc_echo_5fservice_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(EchoReq));
   EchoReply_descriptor_ = file->message_type(1);
-  static const int EchoReply_offsets_[1] = {
+  static const int EchoReply_offsets_[2] = {
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(EchoReply, status_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(EchoReply, msg_),
   };
   EchoReply_reflection_ =
@@ -103,9 +104,9 @@ void protobuf_AddDesc_echo_5fservice_2eproto() {
 
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
     "\n\022echo_service.proto\022\006Sample\"\026\n\007EchoReq\022"
-    "\013\n\003msg\030\001 \002(\t\"\030\n\tEchoReply\022\013\n\003msg\030\001 \002(\t29"
-    "\n\013EchoService\022*\n\004Echo\022\017.Sample.EchoReq\032\021"
-    ".Sample.EchoReplyB\003\200\001\001", 142);
+    "\013\n\003msg\030\001 \002(\t\"(\n\tEchoReply\022\016\n\006status\030\001 \002("
+    "\005\022\013\n\003msg\030\002 \002(\t29\n\013EchoService\022*\n\004Echo\022\017."
+    "Sample.EchoReq\032\021.Sample.EchoReplyB\003\200\001\001", 158);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "echo_service.proto", &protobuf_RegisterTypes);
   EchoReq::default_instance_ = new EchoReq();
@@ -351,6 +352,7 @@ void EchoReq::Swap(EchoReq* other) {
 // ===================================================================
 
 #ifndef _MSC_VER
+const int EchoReply::kStatusFieldNumber;
 const int EchoReply::kMsgFieldNumber;
 #endif  // !_MSC_VER
 
@@ -370,6 +372,7 @@ EchoReply::EchoReply(const EchoReply& from)
 
 void EchoReply::SharedCtor() {
   _cached_size_ = 0;
+  status_ = 0;
   msg_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
@@ -409,6 +412,7 @@ EchoReply* EchoReply::New() const {
 
 void EchoReply::Clear() {
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    status_ = 0;
     if (has_msg()) {
       if (msg_ != &::google::protobuf::internal::kEmptyString) {
         msg_->clear();
@@ -425,10 +429,26 @@ bool EchoReply::MergePartialFromCodedStream(
   ::google::protobuf::uint32 tag;
   while ((tag = input->ReadTag()) != 0) {
     switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
-      // required string msg = 1;
+      // required int32 status = 1;
       case 1: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::int32, ::google::protobuf::internal::WireFormatLite::TYPE_INT32>(
+                 input, &status_)));
+          set_has_status();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(18)) goto parse_msg;
+        break;
+      }
+
+      // required string msg = 2;
+      case 2: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_msg:
           DO_(::google::protobuf::internal::WireFormatLite::ReadString(
                 input, this->mutable_msg()));
           ::google::protobuf::internal::WireFormat::VerifyUTF8String(
@@ -459,13 +479,18 @@ bool EchoReply::MergePartialFromCodedStream(
 
 void EchoReply::SerializeWithCachedSizes(
     ::google::protobuf::io::CodedOutputStream* output) const {
-  // required string msg = 1;
+  // required int32 status = 1;
+  if (has_status()) {
+    ::google::protobuf::internal::WireFormatLite::WriteInt32(1, this->status(), output);
+  }
+
+  // required string msg = 2;
   if (has_msg()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->msg().data(), this->msg().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     ::google::protobuf::internal::WireFormatLite::WriteString(
-      1, this->msg(), output);
+      2, this->msg(), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -476,14 +501,19 @@ void EchoReply::SerializeWithCachedSizes(
 
 ::google::protobuf::uint8* EchoReply::SerializeWithCachedSizesToArray(
     ::google::protobuf::uint8* target) const {
-  // required string msg = 1;
+  // required int32 status = 1;
+  if (has_status()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteInt32ToArray(1, this->status(), target);
+  }
+
+  // required string msg = 2;
   if (has_msg()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->msg().data(), this->msg().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        1, this->msg(), target);
+        2, this->msg(), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -497,7 +527,14 @@ int EchoReply::ByteSize() const {
   int total_size = 0;
 
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    // required string msg = 1;
+    // required int32 status = 1;
+    if (has_status()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::Int32Size(
+          this->status());
+    }
+
+    // required string msg = 2;
     if (has_msg()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::StringSize(
@@ -531,6 +568,9 @@ void EchoReply::MergeFrom(const ::google::protobuf::Message& from) {
 void EchoReply::MergeFrom(const EchoReply& from) {
   GOOGLE_CHECK_NE(&from, this);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (from.has_status()) {
+      set_status(from.status());
+    }
     if (from.has_msg()) {
       set_msg(from.msg());
     }
@@ -551,13 +591,14 @@ void EchoReply::CopyFrom(const EchoReply& from) {
 }
 
 bool EchoReply::IsInitialized() const {
-  if ((_has_bits_[0] & 0x00000001) != 0x00000001) return false;
+  if ((_has_bits_[0] & 0x00000003) != 0x00000003) return false;
 
   return true;
 }
 
 void EchoReply::Swap(EchoReply* other) {
   if (other != this) {
+    std::swap(status_, other->status_);
     std::swap(msg_, other->msg_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);

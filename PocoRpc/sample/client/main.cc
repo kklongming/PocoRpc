@@ -9,6 +9,13 @@
 
 #include <Poco/Thread.h>
 
+#include <Poco/Timestamp.h>
+#include <Poco/Format.h>
+#include <Poco/UUIDGenerator.h>
+#include "PocoRpc/sample/rpc_define/echo_service.pb.h"
+#include "PocoRpc/rpclib/PocoRpcController.h"
+#include "PocoRpc/rpclib/PocoRpcError.h"
+
 DEFINE_string(rpc_server, "localhost", "rpc server host name or ip address");
 DEFINE_int32(rpc_port, 9999, "rpc server port");
 
@@ -17,8 +24,8 @@ using namespace PocoRpc;
 
 void DebugString(::google::protobuf::Message* msg) {
   LOG(INFO) << msg->GetDescriptor()->full_name() << " : {" << std::endl
-          << msg->DebugString() << std::endl
-          << "}";
+      << msg->DebugString() << std::endl
+      << "}";
 }
 
 void StartClient() {
@@ -33,9 +40,9 @@ void StartClient() {
 
   LOG(INFO) << "================= sleep(1000 * 10) =====================";
   Poco::Thread::sleep(1000 * 10);
-   
+
   LOG(INFO) << "================== bservice->Ping ====================";
-   bservice->Ping(ping_ctr.get(), &req, &reply, NULL);
+  bservice->Ping(ping_ctr.get(), &req, &reply, NULL);
 
   AutoPocoRpcControllerPtr get_svc_list_ctr2 = ch->NewRpcController();
 
@@ -45,9 +52,9 @@ void StartClient() {
   bservice->GetServiceList(get_svc_list_ctr2.get(), &get_service_rep, &get_service_reply, NULL);
 
 
-  bool ret = get_svc_list_ctr2->tryWait(1000*10);
+  bool ret = get_svc_list_ctr2->tryWait(1000 * 10);
   if (ret) {
-  DebugString(&get_service_reply);
+    DebugString(&get_service_reply);
   } else {
     LOG(INFO) << "TIME OUT";
     LOG(INFO) << get_svc_list_ctr2->DebugString();
@@ -58,11 +65,50 @@ void StartClient() {
 }
 
 void test2() {
-  scoped_ptr<MultiThreadTest> test(new MultiThreadTest(8));
-  test->start();
-  waitForTerminationRequest();
-  test->stop();
-  std::cout << test->TestResult() << std::endl;
+  scoped_ptr<MultiThreadTest> test1(new MultiThreadTest(8));
+  //  scoped_ptr<MultiThreadTest> test2(new MultiThreadTest(256));
+  //  scoped_ptr<MultiThreadTest> test3(new MultiThreadTest(256));
+  //  scoped_ptr<MultiThreadTest> test4(new MultiThreadTest(256));
+
+  test1->start();
+  //  test2->start();
+  //  test3->start();
+  //  test4->start();
+
+//  waitForTerminationRequest();
+  Poco::Thread::sleep(30*1000);
+
+  test1->stop();
+  //  test2->stop();
+  //  test3->stop();
+  //  test4->stop();
+
+  std::cout << test1->TestResult() << std::endl;
+  //  std::cout << test2->TestResult() << std::endl;
+  //  std::cout << test3->TestResult() << std::endl;
+  //  std::cout << test4->TestResult() << std::endl;
+}
+
+void test3() {
+  scoped_ptr<PocoRpcChannel> rpc_ch_(new PocoRpcChannel(FLAGS_rpc_server, FLAGS_rpc_port));
+  CHECK(rpc_ch_->Init()) << "Faild to connect with rpc server.";
+
+  scoped_ptr<Sample::EchoService_Stub> echo_svc_stub_(new Sample::EchoService_Stub(rpc_ch_.get()));
+
+  Sample::EchoReq request;
+  Sample::EchoReply reply;
+
+  Poco::UUID uuid = Poco::UUIDGenerator::defaultGenerator().create();
+  request.set_msg(uuid.toString());
+
+  PocoRpc::AutoPocoRpcControllerPtr rpc_ctr = rpc_ch_->NewRpcController();
+  Poco::Thread::sleep(2000);
+  Poco::Timestamp call_start;
+  echo_svc_stub_->Echo(rpc_ctr.get(), &request, &reply, NULL);
+  bool ret = rpc_ctr->tryWait(1000);
+  Poco::Timestamp call_finished;
+  int rpc_time = (call_finished - call_start) / 1000;
+  LOG(INFO) << "rpc call_finished time = " << rpc_time << " ms" << std::endl;
 }
 
 int main(int argc, char* argv[]) {

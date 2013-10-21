@@ -6,7 +6,8 @@ message EchoReq {
 }
 
 message EchoReply {
-    required string msg = 1;
+    required int32 status = 1;
+    required string msg = 2;
 }
 
 service EchoService {

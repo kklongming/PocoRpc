@@ -15,8 +15,10 @@ namespace PocoRpc {
 
 RpcSocketAcceptor::RpcSocketAcceptor(PocoRpcServer *rpc_server, 
         Poco::Net::ServerSocket& socket,
-        Poco::Net::SocketReactor& reactor) : rpc_server_(rpc_server), 
-        SocketAcceptor<RpcServiceHandler>(socket, reactor) {
+        Poco::Net::SocketReactor& read_reactor,
+        Poco::Net::SocketReactor& write_reactor) : rpc_server_(rpc_server), 
+        SocketAcceptor<RpcServiceHandler>(socket, read_reactor) {
+  p_write_reactor_ = &write_reactor;
 }
 
 RpcSocketAcceptor::~RpcSocketAcceptor() {
@@ -25,9 +27,9 @@ RpcSocketAcceptor::~RpcSocketAcceptor() {
 
 RpcServiceHandler* RpcSocketAcceptor::createServiceHandler(StreamSocket& socket) {
   LOG(INFO) << "New connection comming...";
-  Poco::Net::SocketReactor *pReactor = reactor();
-  CHECK(pReactor != NULL);
-  return new RpcServiceHandler(rpc_server_, socket, *pReactor);
+  Poco::Net::SocketReactor *p_read_reactor = reactor();
+  CHECK(p_read_reactor != NULL);
+  return new RpcServiceHandler(rpc_server_, socket, *p_read_reactor, *p_write_reactor_);
 }
 
 } // namespace PocoRpc

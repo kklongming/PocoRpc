@@ -180,10 +180,17 @@ class EchoReply : public ::google::protobuf::Message {
 
   // accessors -------------------------------------------------------
 
-  // required string msg = 1;
+  // required int32 status = 1;
+  inline bool has_status() const;
+  inline void clear_status();
+  static const int kStatusFieldNumber = 1;
+  inline ::google::protobuf::int32 status() const;
+  inline void set_status(::google::protobuf::int32 value);
+
+  // required string msg = 2;
   inline bool has_msg() const;
   inline void clear_msg();
-  static const int kMsgFieldNumber = 1;
+  static const int kMsgFieldNumber = 2;
   inline const ::std::string& msg() const;
   inline void set_msg(const ::std::string& value);
   inline void set_msg(const char* value);
@@ -194,15 +201,18 @@ class EchoReply : public ::google::protobuf::Message {
 
   // @@protoc_insertion_point(class_scope:Sample.EchoReply)
  private:
+  inline void set_has_status();
+  inline void clear_has_status();
   inline void set_has_msg();
   inline void clear_has_msg();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::std::string* msg_;
+  ::google::protobuf::int32 status_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(1 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
 
   friend void  protobuf_AddDesc_echo_5fservice_2eproto();
   friend void protobuf_AssignDesc_echo_5fservice_2eproto();
@@ -351,15 +361,37 @@ inline void EchoReq::set_allocated_msg(::std::string* msg) {
 
 // EchoReply
 
-// required string msg = 1;
-inline bool EchoReply::has_msg() const {
+// required int32 status = 1;
+inline bool EchoReply::has_status() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
-inline void EchoReply::set_has_msg() {
+inline void EchoReply::set_has_status() {
   _has_bits_[0] |= 0x00000001u;
 }
-inline void EchoReply::clear_has_msg() {
+inline void EchoReply::clear_has_status() {
   _has_bits_[0] &= ~0x00000001u;
+}
+inline void EchoReply::clear_status() {
+  status_ = 0;
+  clear_has_status();
+}
+inline ::google::protobuf::int32 EchoReply::status() const {
+  return status_;
+}
+inline void EchoReply::set_status(::google::protobuf::int32 value) {
+  set_has_status();
+  status_ = value;
+}
+
+// required string msg = 2;
+inline bool EchoReply::has_msg() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void EchoReply::set_has_msg() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void EchoReply::clear_has_msg() {
+  _has_bits_[0] &= ~0x00000002u;
 }
 inline void EchoReply::clear_msg() {
   if (msg_ != &::google::protobuf::internal::kEmptyString) {

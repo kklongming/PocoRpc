@@ -22,7 +22,7 @@ int main(int argc, char* argv[]) {
   google::InitGoogleLogging(argv[0]);
   google::ParseCommandLineFlags(&argc, &argv, true);
   FLAGS_logtostderr = true;
-  FLAGS_rpc_worker_count_ = 4;
+  FLAGS_rpc_worker_count_ = 1;
   LOG(INFO) << "==> Start Rpc Server...";
   
   RunRpcServer();

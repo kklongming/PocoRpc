@@ -8,7 +8,7 @@
 #include "PocoRpc/rpclib/PocoRpcSocketReactor.h"
 #include <Poco/Thread.h>
 
-DEFINE_int32(reactor_idle_time, 100, "sleep time in ms when there are no sockets for the SocketReactor");
+DEFINE_int32(reactor_idle_time, 25, "sleep time in ms when there are no sockets for the SocketReactor");
 
 namespace PocoRpc {
 

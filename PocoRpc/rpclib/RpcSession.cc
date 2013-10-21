@@ -49,22 +49,6 @@ void RpcSession::ReleaseSendingRpcmsg() {
   sending_rpcmsg_.reset();
 }
 
-void RpcSession::reg_on_pushed_cb(Poco::Runnable* cb) {
-  pending_response_->reg_on_pushed_callback(cb);
-}
-
-void RpcSession::clear_on_pushed_cb() {
-  pending_response_->clear_on_pushed_callback();
-}
-
-void RpcSession::reg_on_popuped_cb(Poco::Runnable* cb) {
-  pending_response_->reg_on_popuped_callback(cb);
-}
-
-void RpcSession::clear_on_popuped_cb() {
-  pending_response_->clear_on_popuped_callback();
-}
-
 void RpcSession::update_last_atime() {
   Poco::Timestamp now;
   last_access_time_ = now;

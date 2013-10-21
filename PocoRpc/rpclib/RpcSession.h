@@ -35,11 +35,6 @@ class RpcSession {
   bool tryPopup(RpcMessagePtr* p_rpcmsg, int timeout);
   void ReleaseSendingRpcmsg();
 
-  void reg_on_pushed_cb(Poco::Runnable* cb);
-  void clear_on_pushed_cb();
-  void reg_on_popuped_cb(Poco::Runnable* cb);
-  void clear_on_popuped_cb();
-
   typedef FifoQueue<RpcMessagePtr> RpcMsgQueue;
 
  private:

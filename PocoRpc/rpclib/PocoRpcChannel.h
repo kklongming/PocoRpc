@@ -103,16 +103,17 @@ class PocoRpcChannel : public google::protobuf::RpcChannel {
 
   // 已经接收完毕的rpc的response对应的buf, 等待另外一个线程进行处理
   scoped_ptr<BytesBufferQueue> recv_buf_array_;
-  scoped_ptr<Poco::FastMutex> mutex_recv_buf_array_;
 
   // 网络工作线程(reactor 运行的线程)
-  scoped_ptr<Poco::Thread> net_worker_;
+  scoped_ptr<Poco::Thread> read_net_worker_;
+  scoped_ptr<Poco::Thread> write_net_worker_;
 
   // 处理Response 的工作线程
   scoped_ptr<Poco::Thread> response_worker_;
   scoped_ptr<Poco::Runnable> ra_response_;
 
-  scoped_ptr<Poco::Net::SocketReactor> reactor_;
+  scoped_ptr<Poco::Net::SocketReactor> read_reactor_;
+  scoped_ptr<Poco::Net::SocketReactor> write_reactor_;
   scoped_ptr<Poco::Net::SocketAddress> address_;
   scoped_ptr<Poco::Net::StreamSocket> socket_;
 
@@ -142,9 +143,6 @@ class PocoRpcChannel : public google::protobuf::RpcChannel {
   
   void on_socket_error();
   void auto_reconnect();
-  
-  void on_pushed_rpc();
-  void on_popup_rpc();
   
   DISALLOW_COPY_AND_ASSIGN(PocoRpcChannel);
 };

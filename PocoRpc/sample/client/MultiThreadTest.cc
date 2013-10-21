@@ -13,6 +13,7 @@
 #include <Poco/ScopedLock.h>
 #include "PocoRpc/sample/rpc_define/echo_service.pb.h"
 #include "PocoRpc/rpclib/PocoRpcController.h"
+#include "PocoRpc/rpclib/PocoRpcError.h"
 
 DECLARE_string(rpc_server);
 DECLARE_int32(rpc_port);
@@ -79,8 +80,8 @@ std::string MultiThreadTest::TestResult() {
   ss << Poco::format("total : %d\n", total_count);
   if (start_time_.get() != NULL and stop_time_.get() != NULL) {
     Poco::Timestamp::TimeDiff test_time = *stop_time_ - *start_time_;
-    ss << Poco::format("total time : %f s\n", test_time/1000000.0);
-    ss << Poco::format("speed : %f rpc/s\n", total_count/(test_time/1000000.0));
+    ss << Poco::format("total time : %f s\n", test_time / 1000000.0);
+    ss << Poco::format("speed : %f rpc/s\n", total_count / (test_time / 1000000.0));
   }
 
   return ss.str();
@@ -89,7 +90,6 @@ std::string MultiThreadTest::TestResult() {
 void MultiThreadTest::test() {
   LOG(INFO) << "TEST THREAD START...";
   while (not exit_) {
-    Poco::Timestamp call_start;
     Sample::EchoReq request;
     Sample::EchoReply reply;
 
@@ -97,17 +97,18 @@ void MultiThreadTest::test() {
     request.set_msg(uuid.toString());
 
     PocoRpc::AutoPocoRpcControllerPtr rpc_ctr = rpc_ch_->NewRpcController();
+    Poco::Timestamp call_start;
     echo_svc_stub_->Echo(rpc_ctr.get(), &request, &reply, NULL);
     bool ret = rpc_ctr->tryWait(1000);
     Poco::Timestamp call_finished;
-    int rpc_time = (call_finished - call_start)/1000;
+    int rpc_time = (call_finished - call_start) / 1000;
     {
       Poco::ScopedLock<Poco::FastMutex> lock(*mutex_count_);
       if (ret) {
         if (rpc_time <= 50) {
           count_0_50_++;
         }
-        if (rpc_time > 50 and rpc_time <=100) {
+        if (rpc_time > 50 and rpc_time <= 100) {
           count_50_100_++;
         }
         if (rpc_time > 100 and rpc_time <= 250) {
@@ -116,10 +117,14 @@ void MultiThreadTest::test() {
         if (rpc_time > 250 and rpc_time <= 500) {
           count_250_500_++;
         }
-        if (rpc_time > 500 and rpc_time <=1000) {
+        if (rpc_time > 500 and rpc_time <= 1000) {
           count_500_1000_++;
         }
-        CHECK(reply.msg() == uuid.toString());
+        if (reply.status() == PocoRpc::E_OK) {
+          CHECK(reply.msg() == uuid.toString()) << reply.msg();
+        } else {
+          LOG(INFO) << "RPC reply.status=" << reply.status();
+        }
       } else {
         count_time_out_++;
       }

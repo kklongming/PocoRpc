@@ -43,7 +43,8 @@ class RpcServiceHandler {
   
   RpcServiceHandler(PocoRpcServer* rpc_server,
           Poco::Net::StreamSocket& socket,
-          Poco::Net::SocketReactor& reactor);
+          Poco::Net::SocketReactor& read_reactor, 
+          Poco::Net::SocketReactor& write_reactor);
 
   virtual ~RpcServiceHandler();
   
@@ -51,7 +52,8 @@ class RpcServiceHandler {
   std::string client_uuid_;
   PocoRpcServer *rpc_server_;
   Poco::Net::StreamSocket socket_;
-  Poco::Net::SocketReactor& reactor_;
+  Poco::Net::SocketReactor& read_reactor_;
+  Poco::Net::SocketReactor& write_reactor_;
   
   // 正在接收中的 buf
   scoped_ptr<BytesBuffer> recving_buf_;
@@ -59,8 +61,6 @@ class RpcServiceHandler {
   // 正在发送中的 buf
   scoped_ptr<BytesBuffer> sending_buf_;
   
-  bool onWritable_ready_;
-  scoped_ptr<Poco::FastMutex> mutex_onWritable_ready_;
   void reg_onWritable();
   void unreg_onWritable();
 
@@ -72,9 +72,6 @@ class RpcServiceHandler {
   void onWritable(const Poco::AutoPtr<Poco::Net::WritableNotification>& pNf);
   void onShutdown(const Poco::AutoPtr<Poco::Net::ShutdownNotification>& pNf);
   void onError(const Poco::AutoPtr<Poco::Net::ErrorNotification>& pNf);
-  
-  void on_pushed_cb(RpcSession::RpcMsgQueue* queue);
-  void on_popuped_cb(RpcSession::RpcMsgQueue* queue);
 
   DISALLOW_COPY_AND_ASSIGN(RpcServiceHandler);
 };
