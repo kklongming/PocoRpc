@@ -25,6 +25,22 @@ exit_(false), session_timeout_(timeout), check_interval_(check_interval) {
 RpcSessionManager::~RpcSessionManager() {
   exit_ = true;
   timer_for_check_session_->stop();
+  {
+    Poco::ScopedLock<Poco::FastMutex> lock(*timeout_cb_queue_mutex_);
+//    CallbackQueue::iterator it_cb = timeout_cb_queue_->begin();
+//    for (; it_cb != timeout_cb_queue_->end(); ++it_cb) {
+//      Poco::Runnable *task = *it_cb;
+//      delete task;
+//    }
+    STLClear(timeout_cb_queue_.get());
+    timeout_cb_queue_->clear();
+  }
+  {
+    Poco::ScopedReadRWLock read_lock(*session_map_rwlock_);
+    session_map_->clear();
+  }
+
+  LOG(INFO) << "DESTORY RpcSessionManager. session_map_->size()=" << session_map_->size();
 }
 
 RpcSessionPtr RpcSessionManager::FindOrCreate(const std::string& uuid) {
@@ -46,7 +62,7 @@ RpcSessionPtr RpcSessionManager::FindOrCreate(const std::string& uuid) {
     } else {
       /// still not find it by uuid
       /// so create a new one
-//      session.assign(new RpcSession(uuid, session_timeout_));
+      //      session.assign(new RpcSession(uuid, session_timeout_));
       session.reset(new RpcSession(uuid, session_timeout_));
       session_map_->insert(std::pair<std::string, RpcSessionPtr>(uuid, session));
     }
@@ -67,8 +83,8 @@ void RpcSessionManager::remove_session(const std::string& uuid) {
 void RpcSessionManager::schedule_check_task(RpcSessionPtr rpc_session) {
   Poco::ScopedLock<Poco::FastMutex> lock(*timeout_cb_queue_mutex_);
   Poco::Runnable *task = Poco::NewCallback<RpcSessionManager, RpcSessionPtr>(this,
-          &RpcSessionManager::check_session, rpc_session);
-  timeout_cb_queue_->push(task);
+      &RpcSessionManager::check_session, rpc_session);
+  timeout_cb_queue_->push_front(task);
 }
 
 void RpcSessionManager::check_session(RpcSessionPtr rpc_session) {
@@ -92,7 +108,7 @@ void RpcSessionManager::on_timer(Poco::Timer& timer) {
       }
       // timeout_cb_queue_ is not empty.
       task = timeout_cb_queue_->front();
-      timeout_cb_queue_->pop();
+      timeout_cb_queue_->pop_back();
     }
     task->run();
   }

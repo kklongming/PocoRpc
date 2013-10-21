@@ -53,7 +53,7 @@ class FifoQueue {
 
   void clear_on_popuped_callback() {
     Poco::ScopedLock<Poco::FastMutex> lock(*mutex_);
-    on_popuped_.release();
+    on_popuped_.reset(NULL);
   }
 
   void reg_on_pushed_callback(Poco::Runnable* cb) {
@@ -63,7 +63,7 @@ class FifoQueue {
 
   void clear_on_pushed_callback() {
     Poco::ScopedLock<Poco::FastMutex> lock(*mutex_);
-    on_pushed_.release();
+    on_pushed_.reset(NULL);
   }
 
   std::string DebugString();

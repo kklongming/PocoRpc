@@ -199,7 +199,7 @@ void RpcServiceHandler::onReadable(const Poco::AutoPtr<Poco::Net::ReadableNotifi
       // push rpcmsg to rpcserver 
       rpc_server_->push_rpcmsg(rpc_msg_ptr);
 
-      recving_buf_.release();
+      recving_buf_.reset(NULL);
     }
 
   } catch (Poco::Exception ex) {
@@ -250,7 +250,7 @@ void RpcServiceHandler::onWritable(const Poco::AutoPtr<Poco::Net::WritableNotifi
     sending_buf_->set_done_size(sending_buf_->get_done_size() + send_size);
     if (sending_buf_->get_done_size() == sending_buf_->get_total_size()) {
       /// 发送完成 100%
-      sending_buf_.release();
+      sending_buf_.reset(NULL);
       session->ReleaseSendingRpcmsg();
     }
 

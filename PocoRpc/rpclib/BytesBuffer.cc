@@ -18,6 +18,7 @@ BytesBuffer::BytesBuffer(uint32 size) : body_size_(size), done_size_(0) {
 }
 
 BytesBuffer::~BytesBuffer() {
+//  LOG(INFO) << "Destory BytesBuffer. size=" << get_total_size();
 }
 
 char* BytesBuffer::phead() {

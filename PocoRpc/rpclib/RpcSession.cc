@@ -16,9 +16,12 @@ client_uuid_(uuid), timeout_(timeout_in_ms), last_access_time_(),
 service_handler_(NULL) {
   pending_response_.reset(new RpcMsgQueue());
   mutex_service_handler_.reset(new Poco::FastMutex());
+  LOG(INFO) << "CREATE a new RpcSession, client_uuid_=" << uuid;
 }
 
 RpcSession::~RpcSession() {
+  pending_response_->clear();
+  LOG(INFO) << "DESTORY RpcSession: pending_response_->size()=" << pending_response_->size();
 }
 
 bool RpcSession::expired() {

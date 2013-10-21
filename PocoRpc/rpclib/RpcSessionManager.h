@@ -30,7 +30,7 @@ class RpcSessionManager {
   
  private:
   typedef std::map<std::string, RpcSessionPtr> RpcSessionMap;
-  typedef std::queue<Poco::Runnable*> CallbackQueue;
+  typedef std::list<Poco::Runnable*> CallbackQueue;
   
   bool exit_;
   uint32 session_timeout_;   // in milliseconds

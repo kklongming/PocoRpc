@@ -217,7 +217,7 @@ bool PocoRpcChannel::Connect() {
         " Exception: " << ex.message();
     if (socket_.get() != NULL) {
       socket_->close();
-      socket_.release();
+      socket_.reset(NULL);
     }
     connected_ = false;
     return false;
@@ -243,7 +243,7 @@ bool PocoRpcChannel::Connect() {
     if (socket_.get() != NULL) {
       unreg_reactor_handler(socket_.get());
       socket_->close();
-      socket_.release();
+      socket_.reset(NULL);
     }
     connected_ = false;
     return false;
@@ -509,7 +509,7 @@ void PocoRpcChannel::onWritable(const Poco::AutoPtr<Poco::Net::WritableNotificat
                            rpc_sending_));
       rpc_sending_->SetFailed("Waiting for response");
       rpc_sending_.assign(NULL);
-      buf_sending_.release();
+      buf_sending_.reset(NULL);
     }
   } catch (Poco::Exception ex) {
     LOG(ERROR) << ex.message();
@@ -540,9 +540,11 @@ void PocoRpcChannel::process_response() {
       if (not rpc_msg->ParseFromArray(recved_buf->pbody(),
                                       recved_buf->get_body_size())) {
         LOG(ERROR) << "RpcMessage 反序列化出错";
+        delete recved_buf;
         on_socket_error();
         continue;
       }
+      delete recved_buf;
 
       AutoPocoRpcControllerPtr rpc_ctrl = NULL;
       {
@@ -561,8 +563,6 @@ void PocoRpcChannel::process_response() {
         }
         rpc_ctrl->signal_rpc_over();
       }
-    } else {
-      //      Poco::Thread::sleep(25);
     }
 
     // rpc_waiting_ 里可能会存在一些已经标记成Canceled的Rpc, 找到并将其从
@@ -618,7 +618,7 @@ void PocoRpcChannel::on_socket_error() {
   // 2. 取消reactor 对此socket进行select/poll检测, 关闭socket, 
   unreg_reactor_handler(socket_.get());
   socket_->close();
-  socket_.release();
+  socket_.reset(NULL);
   connected_ = false;
 
 
@@ -629,7 +629,7 @@ void PocoRpcChannel::on_socket_error() {
   cancel_waiting_response_rpc("socket error");
 
   // 4. 丢弃正在接收状态(未能100%完成接收)的 ByteBuffer
-  buf_recving_.release();
+  buf_recving_.reset(NULL);
 
   // 5. 重置正在发送Request状态中(未能100%完成发送)的rpc
   if (not rpc_sending_.isNull()) {
