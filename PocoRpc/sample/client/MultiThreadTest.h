@@ -16,7 +16,6 @@
 #include <Poco/Thread.h>
 #include <Poco/Mutex.h>
 #include <Poco/Timestamp.h>
-#include <tr1/memory>
 
 class MultiThreadTest {
  public:
@@ -29,7 +28,7 @@ class MultiThreadTest {
   std::string TestResult();
 
  private:
-  typedef std::tr1::shared_ptr<Poco::Thread> ThreadPtr;
+  typedef shared_ptr<Poco::Thread> ThreadPtr;
   typedef std::vector<ThreadPtr> ThreadPtrVec;
 
   int thread_count_;

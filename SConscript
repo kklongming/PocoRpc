@@ -20,8 +20,8 @@ else:
     CPPFLAGS = ['-fPIC', '-O3']
 LINKFLAGS = ['-rdynamic']
 
-# env['CXX'] = 'llvm-g++'
-# env['CC'] = '/usr/bin/gcc'
+# env['CXX'] = 'llvm-g++-4.2'
+# env['CC'] = 'llvm-gcc-4.2'
 env['CPPPATH'] = CPPPATH
 env['CPPDEFINES'] = CPPDEFINES
 env['CPPFLAGS'] = CPPFLAGS

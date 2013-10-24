@@ -13,13 +13,12 @@
 #include "PocoRpc/rpc_proto/poco_rpc.pb.h"
 #include <Poco/Timestamp.h>
 #include <Poco/Mutex.h>
-#include <tr1/memory>
 
 namespace PocoRpc {
 
 class RpcServiceHandler;
 
-typedef std::tr1::shared_ptr<RpcMessage> RpcMessagePtr;
+typedef shared_ptr<RpcMessage> RpcMessagePtr;
 
 class RpcSession {
  public:
@@ -62,7 +61,7 @@ class RpcSession {
   DISALLOW_COPY_AND_ASSIGN(RpcSession);
 };
 
-typedef std::tr1::shared_ptr<RpcSession> RpcSessionPtr;
+typedef shared_ptr<RpcSession> RpcSessionPtr;
 
 } // namespace PocoRpc
 

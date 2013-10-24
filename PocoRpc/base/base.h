@@ -15,6 +15,16 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
+#if defined(__GLIBCPP__) || defined(__GLIBCXX__)
+#include <tr1/memory>
+using std::tr1::shared_ptr;
+#elif defined(_LIBCPP_VERSION)
+// c++11
+#include <memory>
+using std::shared_ptr;
+#endif
+
+
 #include "scoped_ptr.h"
 
 typedef int8_t int8;
@@ -40,9 +50,9 @@ std::string EncryptString(const std::string& val);
 std::string DecryptString(const std::string& val);
 bool tryDecryptString(const std::string& val, std::string* plain_txt);
 
-std::string ReadFromFile(const std::string& file_path, bool strip=true);
+std::string ReadFromFile(const std::string& file_path, bool strip = true);
 bool WriteToFile(const std::string& file_path, const std::string& value);
-std::string CatFile(const std::string& file_path, bool strip=true);
+std::string CatFile(const std::string& file_path, bool strip = true);
 
 // A macro to disallow the copy constructor and operator= functions
 // This should be used in the private: declarations for a class
