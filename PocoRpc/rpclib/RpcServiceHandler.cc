@@ -180,7 +180,7 @@ void RpcServiceHandler::onReadable(const Poco::AutoPtr<Poco::Net::ReadableNotifi
                                       recving_buf_->get_body_size())) {
         // 反序列化出错的原因, 可能是非法客户端发送错误的数据过来
         // socket 通讯出了问题. 不管是那一种, 我们都采取关闭socket的处理方法
-        LOG(ERROR) << "RpcMessage 反序列化出错";
+        LOG(ERROR) << "RpcMessage error for ParseFromArray";
         onSocketError();
         return;
       }

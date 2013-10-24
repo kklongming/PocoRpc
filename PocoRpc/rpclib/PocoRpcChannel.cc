@@ -48,7 +48,7 @@ namespace PocoRpc {
 PocoRpcChannel::PocoRpcChannel(const std::string& host, uint16 port) :
 exit_(true), connected_(false), re_connect_times_(0),
 rpc_sending_(NULL), buf_sending_(NULL), buf_recving_(NULL), socket_(NULL),
-on_reconnect_faild_cb_(NULL), onWritable_ready_(false) {
+on_reconnect_faild_cb_(NULL) {
   auto_reconnect_ = FLAGS_auto_reconnect;
   uuid_ = Poco::UUIDGenerator::defaultGenerator().createRandom().toString();
   rpc_pending_.reset(new RpcControllerQueue());
@@ -62,8 +62,6 @@ on_reconnect_faild_cb_(NULL), onWritable_ready_(false) {
   mutex_reconnect_cont_.reset(new Poco::FastMutex());
   reconnect_func_.reset(Poco::NewPermanentCallback(this,
                                                    &PocoRpcChannel::auto_reconnect));
-
-  mutex_onWritable_ready_.reset(new Poco::FastMutex());
 }
 
 PocoRpcChannel::~PocoRpcChannel() {
@@ -208,7 +206,6 @@ AutoPocoRpcControllerPtr PocoRpcChannel::NewRpcController() {
 
 bool PocoRpcChannel::Connect() {
   CHECK(connected_ == false);
-  CHECK(onWritable_ready_ == false);
   CHECK(socket_.get() == NULL);
   try {
     socket_.reset(CreateSocket());
@@ -233,7 +230,6 @@ bool PocoRpcChannel::Connect() {
   PingReply reply;
 
   bservice->Ping(ping_ctr.get(), &req, &reply, NULL);
-  CHECK(onWritable_ready_);
   ping_ctr->tryWait(FLAGS_ping_time_out);
   if (reply.status() != E_OK) {
     LOG(ERROR) << "Ping server faild.";
@@ -317,28 +313,15 @@ Poco::Net::StreamSocket* PocoRpcChannel::CreateSocket() {
 }
 
 void PocoRpcChannel::reg_on_writeable(Poco::Net::StreamSocket* sock) {
-  Poco::ScopedLock<Poco::FastMutex> lock(*mutex_onWritable_ready_);
-  if (onWritable_ready_) {
-    return;
-  }
-
   write_reactor_->addEventHandler(*sock,
                                   Poco::NObserver<PocoRpcChannel, Poco::Net::WritableNotification>(*this,
                                   &PocoRpcChannel::onWritable));
-  onWritable_ready_ = true;
-  LOG(INFO) << "****************************** reg_on_writeable";
 }
 
 void PocoRpcChannel::unreg_on_writeable(Poco::Net::StreamSocket* sock) {
-  Poco::ScopedLock<Poco::FastMutex> lock(*mutex_onWritable_ready_);
-  if (not onWritable_ready_) {
-    return;
-  }
   write_reactor_->removeEventHandler(*sock,
                                      Poco::NObserver<PocoRpcChannel, Poco::Net::WritableNotification>(*this,
                                      &PocoRpcChannel::onWritable));
-  onWritable_ready_ = false;
-  LOG(INFO) << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ unreg_on_writeable";
 }
 
 void PocoRpcChannel::reg_reactor_handler(Poco::Net::StreamSocket* sock) {
@@ -352,8 +335,6 @@ void PocoRpcChannel::reg_reactor_handler(Poco::Net::StreamSocket* sock) {
   read_reactor_->addEventHandler(*sock,
                                  Poco::NObserver<PocoRpcChannel, Poco::Net::ErrorNotification>(*this,
                                  &PocoRpcChannel::onError));
-  LOG(INFO) << "########## reg_reactor_handler fd=" << sock->impl()->sockfd() <<
-      " ref_count=" << sock->impl()->referenceCount();
 }
 
 void PocoRpcChannel::unreg_reactor_handler(Poco::Net::StreamSocket* sock) {
@@ -367,8 +348,6 @@ void PocoRpcChannel::unreg_reactor_handler(Poco::Net::StreamSocket* sock) {
   read_reactor_->removeEventHandler(*sock,
                                     Poco::NObserver<PocoRpcChannel, Poco::Net::ErrorNotification>(*this,
                                     &PocoRpcChannel::onError));
-  LOG(INFO) << "########## unreg_reactor_handler fd=" << sock->impl()->sockfd() <<
-      " ref_count=" << sock->impl()->referenceCount();
 }
 
 uint32 get_rpc_msg_size(Poco::Net::StreamSocket* sock) {
@@ -539,7 +518,7 @@ void PocoRpcChannel::process_response() {
 
       if (not rpc_msg->ParseFromArray(recved_buf->pbody(),
                                       recved_buf->get_body_size())) {
-        LOG(ERROR) << "RpcMessage 反序列化出错";
+        LOG(ERROR) << "RpcMessage error for ParseFromArray";
         delete recved_buf;
         on_socket_error();
         continue;
@@ -559,7 +538,7 @@ void PocoRpcChannel::process_response() {
         CHECK(rpc_ctrl->response_ != NULL);
         bool ret = rpc_ctrl->response_->ParseFromString(rpc_msg->message_body());
         if (!ret) {
-          rpc_ctrl->SetFailed("Response 反序列化出错");
+          rpc_ctrl->SetFailed("Response error for ParseFromArray");
         }
         rpc_ctrl->signal_rpc_over();
       }

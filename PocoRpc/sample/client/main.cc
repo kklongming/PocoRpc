@@ -65,8 +65,8 @@ void StartClient() {
 }
 
 void test2() {
-  scoped_ptr<MultiThreadTest> test1(new MultiThreadTest(4));
-  //  scoped_ptr<MultiThreadTest> test2(new MultiThreadTest(256));
+  scoped_ptr<MultiThreadTest> test1(new MultiThreadTest(8));
+  //  scoped_ptr<MultiThreadTest> test2(new MultiThreadTest(2));
   //  scoped_ptr<MultiThreadTest> test3(new MultiThreadTest(256));
   //  scoped_ptr<MultiThreadTest> test4(new MultiThreadTest(256));
 
@@ -76,7 +76,7 @@ void test2() {
   //  test4->start();
 
   waitForTerminationRequest();
-//  Poco::Thread::sleep(30*1000);
+  //  Poco::Thread::sleep(30*1000);
 
   test1->stop();
   //  test2->stop();

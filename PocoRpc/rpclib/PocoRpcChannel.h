@@ -123,9 +123,6 @@ class PocoRpcChannel : public google::protobuf::RpcChannel {
   scoped_ptr<Poco::Condition> reconnect_cont_;
   scoped_ptr<Poco::FastMutex> mutex_reconnect_cont_;
   scoped_ptr<Poco::Runnable> reconnect_func_;
-  
-  bool onWritable_ready_;
-  scoped_ptr<Poco::FastMutex> mutex_onWritable_ready_;
 
   bool Connect();
   void RemoveCanceledRpc(uint64 rpc_id);

@@ -15,13 +15,13 @@ LIBPATH = ['/usr/local/lib']
 LIBS = ['pthread', 'protobuf', 'PocoFoundation', 'PocoUtil', 'PocoCrypto', 'PocoNet', 'gflags', 'glog']
 STATICLIBS = []
 if (int(release) == 0):
-    CPPFLAGS = ['-g', '-fPIC', '-O2']
+    CPPFLAGS = ['-g', '-fPIC', '-O3',]
 else:
-    CPPFLAGS = ['-fPIC', '-O2']
+    CPPFLAGS = ['-fPIC', '-O3']
 LINKFLAGS = ['-rdynamic']
 
-# env['CXX'] = 'clang++'
-# env['CC'] = 'clang'
+# env['CXX'] = 'llvm-g++'
+# env['CC'] = '/usr/bin/gcc'
 env['CPPPATH'] = CPPPATH
 env['CPPDEFINES'] = CPPDEFINES
 env['CPPFLAGS'] = CPPFLAGS
